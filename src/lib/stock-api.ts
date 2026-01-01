@@ -3,7 +3,7 @@ import type { StockData, Industry } from './types'
 
 // Using free APIs: Alpha Vantage for stock data (free tier: 25 calls/day)
 // Fallback to Yahoo Finance scraping if needed
-const ALPHA_VANTAGE_KEY = 'demo' // Users should replace with their own free key from alphavantage.co
+const ALPHA_VANTAGE_KEY = import.meta.env.VITE_ALPHA_VANTAGE_KEY || 'demo' // Get free key from alphavantage.co
 
 // Industry index mapping for fallback when no ticker is available
 const INDUSTRY_INDICES: Record<Industry, { ticker: string; name: string }> = {

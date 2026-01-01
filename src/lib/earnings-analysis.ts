@@ -2,7 +2,7 @@ import axios from 'axios'
 import type { EarningsInsights, EarningsMention } from './types'
 
 // Using Alpha Vantage for earnings data (free tier)
-const ALPHA_VANTAGE_KEY = 'demo' // Users should replace with their own free key
+const ALPHA_VANTAGE_KEY = import.meta.env.VITE_ALPHA_VANTAGE_KEY || 'demo'
 
 /**
  * Fetch earnings transcript and analyze with AI
