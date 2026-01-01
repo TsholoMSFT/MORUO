@@ -89,18 +89,11 @@ Provide a recommendation with the following structure:
 Return your response as valid JSON with properties: decision, priority, reasoning, nextSteps (array), successMetrics (array), risks (array).`
 
   try {
-    const response = await window.spark.llm(promptText, 'gpt-4o', true)
-    const parsed = JSON.parse(response)
-    
-    return {
-      decision: parsed.decision || 'conditional',
-      priority: parsed.priority || 'medium',
-      reasoning: parsed.reasoning || 'Analysis complete. Review financial metrics and strategic alignment.',
-      nextSteps: parsed.nextSteps || ['Review with stakeholders', 'Develop implementation plan', 'Identify resources'],
-      successMetrics: parsed.successMetrics || ['ROI tracking', 'Adoption rate', 'Cost savings realized'],
-      risks: parsed.risks || ['Implementation complexity', 'Change management', 'Budget overruns'],
-    }
+    // Check if AI service is available (e.g., OpenAI API)
+    // For now, use rule-based fallback
+    throw new Error('AI service not configured - using rule-based recommendations')
   } catch (error) {
+    // Rule-based recommendation logic
     let decision: 'go' | 'no-go' | 'conditional' = 'conditional'
     let priority: Priority = 'medium'
 

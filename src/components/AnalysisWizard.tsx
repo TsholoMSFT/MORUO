@@ -168,8 +168,8 @@ Available Solution Areas:
 
 Provide a brief 2-3 sentence suggestion about which solution area(s) this use case belongs to and why. If it spans multiple areas, mention all relevant areas.`
 
-      const response = await window.spark.llm(promptText, 'gpt-4o-mini')
-      setSolutionAreaSuggestion(response)
+      // AI service not available - provide fallback suggestion
+      setSolutionAreaSuggestion('AI suggestion service is not configured. Please manually select the most appropriate solution area(s) based on your use case description. Consider if your project focuses on AI/automation, cloud infrastructure, security, or spans multiple areas.')
     } catch (error) {
       setSolutionAreaSuggestion('Unable to generate suggestion at this time. Please select manually.')
     } finally {

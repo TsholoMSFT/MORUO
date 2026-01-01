@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useLocalStorage } from './hooks/useLocalStorage'
 import { Toaster, toast } from 'sonner'
 import { AnalysisWizard } from './components/AnalysisWizard'
 import { AnalysisResults } from './components/AnalysisResults'
@@ -28,7 +28,7 @@ type NavigationContext = {
 }
 
 function App() {
-  const [analyses, setAnalyses] = useKV<Analysis[]>('moruo-analyses', [])
+  const [analyses, setAnalyses] = useLocalStorage<Analysis[]>('moruo-analyses', [])
   const [currentView, setCurrentView] = useState<View>('library')
   const [currentAnalysis, setCurrentAnalysis] = useState<Analysis | null>(null)
   const [currentCustomer, setCurrentCustomer] = useState<string | null>(null)
