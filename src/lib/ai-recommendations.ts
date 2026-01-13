@@ -7,6 +7,17 @@ import type {
   MarketContext,
 } from './types'
 import { industryBenchmarks } from './benchmarks'
+import { getAIRecommendation, checkAIHealth } from './ai-client'
+
+// Cache AI availability to avoid repeated checks
+let aiAvailable: boolean | null = null
+
+async function isAIAvailable(): Promise<boolean> {
+  if (aiAvailable === null) {
+    aiAvailable = await checkAIHealth()
+  }
+  return aiAvailable
+}
 
 export async function generateRecommendation(
   projectBasics: ProjectBasics,
@@ -89,10 +100,69 @@ Provide a recommendation with the following structure:
 Return your response as valid JSON with properties: decision, priority, reasoning, nextSteps (array), successMetrics (array), risks (array).`
 
   try {
-    // Check if AI service is available (e.g., OpenAI API)
-    // For now, use rule-based fallback
-    throw new Error('AI service not configured - using rule-based recommendations')
+    // Check if AI backend is available
+    if (await isAIAvailable()) {
+      const aiResponse = await getAIRecommendation({
+        projectBasics: {
+          customerName: projectBasics.customerName || 'Unknown',
+          projectName: projectBasics.name,
+          solutionArea: projectBasics.solutionArea,
+          industry: projectBasics.industry,
+          investmentAmount: projectBasics.investmentAmount,
+          timelineMonths: projectBasics.timelineMonths,
+        },
+        results: {
+          conservative: {
+            roi: results.conservative.roi,
+            npv: results.conservative.npv,
+            paybackMonths: results.conservative.paybackMonths,
+          },
+          realistic: {
+            roi: results.realistic.roi,
+            npv: results.realistic.npv,
+            paybackMonths: results.realistic.paybackMonths,
+          },
+          optimistic: {
+            roi: results.optimistic.roi,
+            npv: results.optimistic.npv,
+            paybackMonths: results.optimistic.paybackMonths,
+          },
+        },
+        strategicFactors: {
+          competitiveAdvantage: strategicFactors.competitiveDifferentiation,
+          innovationPotential: strategicFactors.innovationEnablement,
+          strategicAlignment: strategicFactors.customerExperience,
+          riskTolerance: strategicFactors.riskMitigation,
+          marketTiming: strategicFactors.employeeProductivity,
+        },
+        marketContext: marketContext ? {
+          stockData: marketContext.stockData ? {
+            price: marketContext.stockData.price,
+            change: marketContext.stockData.change,
+            changePercent: marketContext.stockData.changePercent,
+          } : undefined,
+          earningsInsights: marketContext.earningsInsights ? {
+            sentiment: marketContext.earningsInsights.overallSentiment,
+            themes: marketContext.earningsInsights.strategicThemes,
+          } : undefined,
+        } : undefined,
+      })
+
+      // Map AI response to expected format
+      return {
+        decision: aiResponse.decision === 'proceed' ? 'go' : aiResponse.decision === 'reject' ? 'no-go' : 'conditional',
+        priority: aiResponse.priority as Priority,
+        reasoning: aiResponse.reasoning,
+        nextSteps: aiResponse.nextSteps,
+        successMetrics: aiResponse.successMetrics,
+        risks: aiResponse.risks,
+      }
+    }
+    
+    // Fallback to rule-based if AI not available
+    throw new Error('AI service not available - using rule-based recommendations')
   } catch (error) {
+    console.warn('AI recommendation failed, using fallback:', error)
     // Rule-based recommendation logic
     let decision: 'go' | 'no-go' | 'conditional' = 'conditional'
     let priority: Priority = 'medium'
