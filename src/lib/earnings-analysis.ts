@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type { EarningsInsights, EarningsMention } from './types'
+import { sendChatMessage } from './ai-client'
 
 // Using Alpha Vantage for earnings data (free tier)
 const ALPHA_VANTAGE_KEY = import.meta.env.VITE_ALPHA_VANTAGE_KEY || 'demo'
@@ -7,7 +8,7 @@ const ALPHA_VANTAGE_KEY = import.meta.env.VITE_ALPHA_VANTAGE_KEY || 'demo'
 /**
  * Fetch earnings transcript and analyze with AI
  * Note: Alpha Vantage free tier doesn't include transcripts, so we'll fetch earnings data
- * and use Spark LLM to analyze any available text data
+ * and use the app's AI backend to analyze any available text data
  */
 export async function fetchEarningsData(ticker: string): Promise<any | null> {
   try {
@@ -30,7 +31,7 @@ export async function fetchEarningsData(ticker: string): Promise<any | null> {
 }
 
 /**
- * Analyze text (earnings call transcript, press release, or financial report) using Spark LLM
+ * Analyze text (earnings call transcript, press release, or financial report) using the AI backend
  */
 export async function analyzeEarningsText(
   text: string,
@@ -39,11 +40,6 @@ export async function analyzeEarningsText(
   year: number
 ): Promise<EarningsInsights | null> {
   try {
-    if (!window.spark?.llm) {
-      console.error('Spark LLM not available')
-      return null
-    }
-
     const prompt = `You are a financial analyst AI. Analyze this earnings-related text for ${companyName} (${quarter} ${year}) and extract structured insights about technology investments and strategic direction.
 
 Text to analyze:
@@ -82,7 +78,17 @@ Focus on:
 
 Return ONLY valid JSON, no additional text.`
 
-    const response = await window.spark.llm(prompt, 'gpt-4o', true)
+    const response = await sendChatMessage(
+      [
+        {
+          role: 'system',
+          content:
+            'You are a financial analyst. Return ONLY valid JSON. Do not include markdown or code fences.',
+        },
+        { role: 'user', content: prompt },
+      ],
+      { temperature: 0.2, maxTokens: 1200 }
+    )
     
     // Parse the LLM response
     const jsonMatch = response.match(/\{[\s\S]*\}/)

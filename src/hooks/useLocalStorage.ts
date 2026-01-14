@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 
 /**
- * useLocalStorage hook - replacement for GitHub Spark's useKV
+ * useLocalStorage hook
  * Provides persistent storage using browser localStorage
  */
 export function useLocalStorage<T>(
