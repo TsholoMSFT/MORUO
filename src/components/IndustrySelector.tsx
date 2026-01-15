@@ -33,8 +33,8 @@ export function IndustrySelector({ value, onChange }: IndustrySelectorProps) {
                 className={cn(
                   'flex cursor-pointer items-start gap-4 rounded-lg border-2 p-4 transition-all',
                   isSelected
-                    ? 'border-accent bg-accent/5'
-                    : 'border-border bg-card hover:border-accent/50'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border bg-card hover:border-primary/50'
                 )}
               >
                 <RadioGroupItem value={industry.value} id={industry.value} className="mt-1" />
@@ -44,7 +44,7 @@ export function IndustrySelector({ value, onChange }: IndustrySelectorProps) {
                     weight={isSelected ? 'fill' : 'regular'}
                     className={cn(
                       'shrink-0 transition-colors',
-                      isSelected ? 'text-accent' : 'text-muted-foreground'
+                      isSelected ? 'text-primary' : 'text-muted-foreground'
                     )}
                   />
                   <div className="flex-1 space-y-1">

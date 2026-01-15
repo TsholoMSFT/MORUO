@@ -106,7 +106,7 @@ export function CustomerView({
             <p className="text-xs uppercase tracking-wider text-muted-foreground">
               Average ROI
             </p>
-            <p className="font-mono text-3xl font-semibold text-accent">{formatPercent(avgROI)}</p>
+            <p className="font-mono text-3xl font-semibold text-primary">{formatPercent(avgROI)}</p>
           </div>
         </Card>
 
@@ -169,7 +169,7 @@ export function CustomerView({
               return (
                 <div key={industry} className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <Buildings size={20} className="text-accent" weight="duotone" />
+                    <Buildings size={20} className="text-primary" weight="duotone" />
                     <span className="text-sm">{benchmark?.name || industry}</span>
                   </div>
                   <div className="flex items-center gap-3">
@@ -208,11 +208,11 @@ export function CustomerView({
                     <div className="flex items-start gap-3">
                       <PriorityBadge priority={analysis.recommendation.priority} />
                       <div className="min-w-0">
-                        <h3 className="font-heading text-lg font-semibold leading-tight transition-colors group-hover:text-accent">
+                        <h3 className="font-heading text-lg font-semibold leading-tight transition-colors group-hover:text-primary">
                           {analysis.projectBasics.name}
                         </h3>
                         <p className="text-sm text-muted-foreground">{benchmark.name}</p>
-                        <p className="text-xs font-medium text-accent">
+                        <p className="text-xs font-medium text-primary">
                           {analysis.projectBasics.solutionAreas && analysis.projectBasics.solutionAreas.length > 0
                             ? analysis.projectBasics.solutionAreas.join(', ')
                             : analysis.projectBasics.solutionArea}
@@ -233,7 +233,7 @@ export function CustomerView({
 
                     <div>
                       <p className="text-xs uppercase tracking-wider text-muted-foreground">ROI</p>
-                      <p className="mt-1 font-mono text-lg font-medium text-accent">
+                      <p className="mt-1 font-mono text-lg font-medium text-primary">
                         {formatPercent(realisticROI)}
                       </p>
                     </div>

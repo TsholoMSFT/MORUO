@@ -132,7 +132,7 @@ export function GlobalView({ analyses, onBack, onSelectAnalysis, onViewRegion, o
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card className="p-6">
           <div className="flex items-center gap-3">
-            <ChartBar size={24} className="text-accent" weight="bold" />
+            <ChartBar size={24} className="text-primary" weight="bold" />
             <div>
               <p className="text-sm text-muted-foreground">Total Use Cases</p>
               <p className="font-mono text-2xl font-bold">{globalMetrics.useCaseCount}</p>
@@ -142,7 +142,7 @@ export function GlobalView({ analyses, onBack, onSelectAnalysis, onViewRegion, o
 
         <Card className="p-6">
           <div className="flex items-center gap-3">
-            <TrendUp size={24} className="text-accent" weight="bold" />
+            <TrendUp size={24} className="text-primary" weight="bold" />
             <div>
               <p className="text-sm text-muted-foreground">Total Investment</p>
               <p className="font-mono text-2xl font-bold">{formatCurrency(globalMetrics.totalInvestment)}</p>
@@ -152,7 +152,7 @@ export function GlobalView({ analyses, onBack, onSelectAnalysis, onViewRegion, o
 
         <Card className="p-6">
           <div className="flex items-center gap-3">
-            <TrendUp size={24} className="text-accent" weight="bold" />
+            <TrendUp size={24} className="text-primary" weight="bold" />
             <div>
               <p className="text-sm text-muted-foreground">Total NPV</p>
               <p className="font-mono text-2xl font-bold">{formatCurrency(globalMetrics.totalNPV)}</p>
@@ -162,7 +162,7 @@ export function GlobalView({ analyses, onBack, onSelectAnalysis, onViewRegion, o
 
         <Card className="p-6">
           <div className="flex items-center gap-3">
-            <TrendUp size={24} className="text-accent" weight="bold" />
+            <TrendUp size={24} className="text-primary" weight="bold" />
             <div>
               <p className="text-sm text-muted-foreground">Avg ROI</p>
               <p className="font-mono text-2xl font-bold">{formatPercent(globalMetrics.avgROI)}</p>
@@ -189,7 +189,7 @@ export function GlobalView({ analyses, onBack, onSelectAnalysis, onViewRegion, o
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
                     <div className="rounded-lg bg-accent/10 p-3">
-                      <MapPin size={24} weight="bold" className="text-accent" />
+                      <MapPin size={24} weight="bold" className="text-primary" />
                     </div>
                     <div>
                       <h3 className="font-heading text-xl font-bold">{name}</h3>
@@ -240,7 +240,7 @@ export function GlobalView({ analyses, onBack, onSelectAnalysis, onViewRegion, o
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
                     <div className="rounded-lg bg-accent/10 p-3">
-                      <Buildings size={24} weight="bold" className="text-accent" />
+                      <Buildings size={24} weight="bold" className="text-primary" />
                     </div>
                     <div>
                       <h3 className="font-heading text-xl font-bold">{name}</h3>

@@ -54,7 +54,7 @@
   --popover: oklch(0.1805 0.0205 293.41);
   --popover-foreground: var(--foreground);
 
-  --primary: var(--ih-magenta);
+  --primary: var(--ih-blue);
   --primary-foreground: var(--foreground);
   --secondary: oklch(0.2172 0.0198 298.48);
   --secondary-foreground: var(--foreground);
@@ -67,13 +67,13 @@
 
   --border: oklch(0.2827 0.0241 298.93);
   --input: oklch(0.2827 0.0241 298.93);
-  --ring: var(--ih-blue);
+  --ring: var(--primary);
 
   /* Chart colors */
   --chart-1: var(--ih-blue);
   --chart-2: var(--ih-teal-deep);
   --chart-3: var(--ih-green);
-  --chart-4: var(--ih-magenta);
+  --chart-4: var(--ih-blue-light);
   --chart-5: var(--ih-orange-light);
 
   /* Sidebar tokens (kept for shadcn/ui sidebar primitives) */

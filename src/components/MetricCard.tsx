@@ -33,7 +33,7 @@ export function MetricCard({ label, value, trend, className, size = 'default' }:
             <div
               className={cn(
                 'flex items-center gap-1 text-sm font-medium',
-                isPositive ? 'text-accent' : 'text-destructive'
+                isPositive ? 'text-chart-3' : 'text-destructive'
               )}
             >
               {isPositive ? <TrendUp size={18} weight="bold" /> : <TrendDown size={18} weight="bold" />}

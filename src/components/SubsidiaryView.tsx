@@ -103,7 +103,7 @@ export function SubsidiaryView({
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card className="p-6">
           <div className="flex items-center gap-3">
-            <ChartBar size={24} className="text-accent" weight="bold" />
+            <ChartBar size={24} className="text-primary" weight="bold" />
             <div>
               <p className="text-sm text-muted-foreground">Total Use Cases</p>
               <p className="font-mono text-2xl font-bold">{subsidiaryMetrics.useCaseCount}</p>
@@ -113,7 +113,7 @@ export function SubsidiaryView({
 
         <Card className="p-6">
           <div className="flex items-center gap-3">
-            <TrendUp size={24} className="text-accent" weight="bold" />
+            <TrendUp size={24} className="text-primary" weight="bold" />
             <div>
               <p className="text-sm text-muted-foreground">Total Investment</p>
               <p className="font-mono text-2xl font-bold">
@@ -125,7 +125,7 @@ export function SubsidiaryView({
 
         <Card className="p-6">
           <div className="flex items-center gap-3">
-            <TrendUp size={24} className="text-accent" weight="bold" />
+            <TrendUp size={24} className="text-primary" weight="bold" />
             <div>
               <p className="text-sm text-muted-foreground">Total NPV</p>
               <p className="font-mono text-2xl font-bold">{formatCurrency(subsidiaryMetrics.totalNPV)}</p>
@@ -135,7 +135,7 @@ export function SubsidiaryView({
 
         <Card className="p-6">
           <div className="flex items-center gap-3">
-            <TrendUp size={24} className="text-accent" weight="bold" />
+            <TrendUp size={24} className="text-primary" weight="bold" />
             <div>
               <p className="text-sm text-muted-foreground">Avg ROI</p>
               <p className="font-mono text-2xl font-bold">{formatPercent(subsidiaryMetrics.avgROI)}</p>
@@ -156,7 +156,7 @@ export function SubsidiaryView({
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-4">
                   <div className="rounded-lg bg-accent/10 p-3">
-                    <User size={24} weight="bold" className="text-accent" />
+                    <User size={24} weight="bold" className="text-primary" />
                   </div>
                   <div>
                     <h3 className="font-heading text-xl font-bold">{name}</h3>
@@ -199,7 +199,7 @@ export function SubsidiaryView({
                 <div className="flex-1">
                   <div className="mb-2 flex items-start justify-between">
                     <div>
-                      <h3 className="font-heading text-xl font-bold hover:text-accent transition-colors">
+                      <h3 className="font-heading text-xl font-bold hover:text-primary transition-colors">
                         {analysis.projectBasics.name}
                       </h3>
                       <p className="text-sm text-muted-foreground">{analysis.projectBasics.customerName}</p>

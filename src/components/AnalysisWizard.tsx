@@ -222,9 +222,9 @@ Provide a brief 2-3 sentence suggestion about which solution area(s) this use ca
                 className={cn(
                   'flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 font-heading font-semibold transition-all',
                   currentStep === step.number
-                    ? 'border-accent bg-accent text-accent-foreground'
+                    ? 'border-primary bg-primary text-primary-foreground'
                     : currentStep > step.number
-                      ? 'border-accent bg-accent/10 text-accent'
+                      ? 'border-primary bg-primary/10 text-primary'
                       : 'border-border bg-background text-muted-foreground'
                 )}
               >
@@ -238,7 +238,7 @@ Provide a brief 2-3 sentence suggestion about which solution area(s) this use ca
               <div
                 className={cn(
                   'hidden h-0.5 w-12 lg:block',
-                  currentStep > step.number ? 'bg-accent' : 'bg-border'
+                  currentStep > step.number ? 'bg-primary' : 'bg-border'
                 )}
               />
             )}
@@ -412,8 +412,8 @@ Provide a brief 2-3 sentence suggestion about which solution area(s) this use ca
                 </p>
                 
                 {solutionAreaSuggestion && (
-                  <div className="rounded-lg border border-accent/20 bg-accent/5 p-4">
-                    <div className="mb-2 flex items-center gap-2 text-sm font-medium text-accent">
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                    <div className="mb-2 flex items-center gap-2 text-sm font-medium text-primary">
                       <Lightbulb weight="fill" />
                       AI Suggestion
                     </div>

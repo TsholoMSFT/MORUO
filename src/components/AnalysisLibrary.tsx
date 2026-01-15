@@ -91,7 +91,7 @@ export function AnalysisLibrary({ analyses, onSelect, onNew, onDelete, onViewCus
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center space-y-6">
         <div className="rounded-full bg-accent/10 p-8">
-          <ChartBar size={64} className="text-accent" weight="duotone" />
+          <ChartBar size={64} className="text-primary" weight="duotone" />
         </div>
         <div className="space-y-2 text-center">
           <h2 className="font-heading text-2xl font-bold">No Analyses Yet</h2>
@@ -168,7 +168,7 @@ export function AnalysisLibrary({ analyses, onSelect, onNew, onDelete, onViewCus
               >
                 <div className="space-y-4">
                   <div>
-                    <h3 className="font-heading text-lg font-semibold transition-colors group-hover:text-accent">
+                    <h3 className="font-heading text-lg font-semibold transition-colors group-hover:text-primary">
                       {customer.name}
                     </h3>
                     <p className="mt-1 text-sm text-muted-foreground">
@@ -188,7 +188,7 @@ export function AnalysisLibrary({ analyses, onSelect, onNew, onDelete, onViewCus
                       <p className="text-xs uppercase tracking-wider text-muted-foreground">
                         Avg ROI
                       </p>
-                      <p className="mt-1 font-mono text-sm font-medium text-accent">
+                      <p className="mt-1 font-mono text-sm font-medium text-primary">
                         {formatPercent(customer.avgROI)}
                       </p>
                     </div>
@@ -217,7 +217,7 @@ export function AnalysisLibrary({ analyses, onSelect, onNew, onDelete, onViewCus
                 <div>
                   <div className="mb-2 flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <h3 className="font-heading text-lg font-semibold leading-tight transition-colors group-hover:text-accent">
+                      <h3 className="font-heading text-lg font-semibold leading-tight transition-colors group-hover:text-primary">
                         {analysis.projectBasics.name}
                       </h3>
                       <p className="mt-1 text-sm font-medium text-muted-foreground">
@@ -249,7 +249,7 @@ export function AnalysisLibrary({ analyses, onSelect, onNew, onDelete, onViewCus
                     <p className="text-xs text-muted-foreground">
                       {analysis.projectBasics.subsidiary} • {analysis.projectBasics.region}
                     </p>
-                    <p className="text-xs font-medium text-accent">
+                    <p className="text-xs font-medium text-primary">
                       {analysis.projectBasics.solutionAreas && analysis.projectBasics.solutionAreas.length > 0
                         ? analysis.projectBasics.solutionAreas.join(', ')
                         : analysis.projectBasics.solutionArea}

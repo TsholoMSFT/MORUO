@@ -387,7 +387,7 @@ export function AnalysisResults({ analysis, onBack, onSave, onEdit, isSaved }: A
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Expected ROI</span>
-                        <span className="font-semibold text-accent">{formatPercent(results.realistic.roi)}</span>
+                        <span className="font-semibold text-primary">{formatPercent(results.realistic.roi)}</span>
                       </div>
                       {marketData && (
                         <>
@@ -491,7 +491,7 @@ export function AnalysisResults({ analysis, onBack, onSave, onEdit, isSaved }: A
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{commitment.category}</span>
                             {commitment.amount && (
-                              <span className="font-mono text-accent">
+                              <span className="font-mono text-primary">
                                 {formatCurrency(commitment.amount)}
                               </span>
                             )}
@@ -604,7 +604,7 @@ export function AnalysisResults({ analysis, onBack, onSave, onEdit, isSaved }: A
               <ul className="space-y-3">
                 {recommendation.successMetrics.map((metric, index) => (
                   <li key={index} className="flex items-start gap-3">
-                    <CheckCircle className="mt-0.5 shrink-0 text-accent" size={20} weight="fill" />
+                    <CheckCircle className="mt-0.5 shrink-0 text-chart-3" size={20} weight="fill" />
                     <span className="leading-relaxed">{metric}</span>
                   </li>
                 ))}

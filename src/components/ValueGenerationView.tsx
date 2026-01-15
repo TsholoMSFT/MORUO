@@ -268,7 +268,7 @@ export function ValueGenerationView({ analyses, onBack, onSelectAnalysis }: Valu
       <div className="grid gap-6 sm:grid-cols-3">
         <Card className="p-6">
           <div className="mb-2 text-sm font-medium text-muted-foreground">Total Net Benefit</div>
-          <div className="font-heading text-3xl font-bold text-accent">{formatCurrency(totalNetBenefit)}</div>
+          <div className="font-heading text-3xl font-bold text-primary">{formatCurrency(totalNetBenefit)}</div>
           <div className="mt-1 text-xs text-muted-foreground">
             From {filteredAnalyses.length} use case{filteredAnalyses.length !== 1 ? 's' : ''}
           </div>
@@ -276,13 +276,13 @@ export function ValueGenerationView({ analyses, onBack, onSelectAnalysis }: Valu
 
         <Card className="p-6">
           <div className="mb-2 text-sm font-medium text-muted-foreground">Average ROI</div>
-          <div className="font-heading text-3xl font-bold text-accent">{avgROI.toFixed(0)}%</div>
+          <div className="font-heading text-3xl font-bold text-primary">{avgROI.toFixed(0)}%</div>
           <div className="mt-1 text-xs text-muted-foreground">Realistic scenario average</div>
         </Card>
 
         <Card className="p-6">
           <div className="mb-2 text-sm font-medium text-muted-foreground">Solution Areas</div>
-          <div className="font-heading text-3xl font-bold text-accent">
+          <div className="font-heading text-3xl font-bold text-primary">
             {valueByAreaComparison.length}
           </div>
           <div className="mt-1 text-xs text-muted-foreground">Active investment areas</div>
@@ -305,7 +305,7 @@ export function ValueGenerationView({ analyses, onBack, onSelectAnalysis }: Valu
                 <div className="mt-1 text-sm text-muted-foreground">Avg ROI: {avgROI.toFixed(0)}%</div>
               </div>
               <div className="text-right">
-                <div className="font-mono text-lg font-semibold text-accent">
+                <div className="font-mono text-lg font-semibold text-primary">
                   {formatCurrency(totalValue)}
                 </div>
                 <div className="text-xs text-muted-foreground">Total net benefit</div>
@@ -333,7 +333,7 @@ export function ValueGenerationView({ analyses, onBack, onSelectAnalysis }: Valu
                 onClick={() => onSelectAnalysis(analysis)}
               >
                 <div className="flex flex-1 items-start gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10 font-mono text-sm font-semibold text-accent">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 font-mono text-sm font-semibold text-primary">
                     {index + 1}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -358,7 +358,7 @@ export function ValueGenerationView({ analyses, onBack, onSelectAnalysis }: Valu
                   </div>
                 </div>
                 <div className="ml-4 text-right">
-                  <div className="flex items-center gap-1 font-mono text-lg font-semibold text-accent">
+                  <div className="flex items-center gap-1 font-mono text-lg font-semibold text-primary">
                     <TrendUp weight="bold" />
                     {formatCurrency(analysis.results.realistic.netBenefit)}
                   </div>
