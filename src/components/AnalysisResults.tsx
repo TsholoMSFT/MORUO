@@ -33,7 +33,7 @@ import {
   ChatCircle,
   Handshake,
   Repeat,
-  SwordsCrossed,
+  Sword,
   CloudArrowUp,
 } from '@phosphor-icons/react'
 import type { Analysis, DealType } from '@/lib/types'
@@ -45,7 +45,7 @@ const dealTypeIcons: Record<DealType, React.ReactNode> = {
   'new-business': <Handshake size={16} weight="duotone" />,
   'renewal': <Repeat size={16} weight="duotone" />,
   'upsell-cross-sell': <TrendUp size={16} weight="duotone" />,
-  'competitive': <SwordsCrossed size={16} weight="duotone" />,
+  'competitive': <Sword size={16} weight="duotone" />,
   'azure-macc': <CloudArrowUp size={16} weight="duotone" />
 }
 

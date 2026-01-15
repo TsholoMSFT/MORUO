@@ -1,7 +1,7 @@
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { PriorityBadge } from './PriorityBadge'
-import { ArrowLeft, Buildings, ChartBar, TrendUp, Calendar, Handshake, Repeat, SwordsCrossed, CloudArrowUp } from '@phosphor-icons/react'
+import { ArrowLeft, Buildings, ChartBar, TrendUp, Calendar, Handshake, Repeat, Sword, CloudArrowUp } from '@phosphor-icons/react'
 import type { Analysis, DealType } from '@/lib/types'
 import { DEAL_TYPE_INFO } from '@/lib/types'
 import { formatCurrency, formatPercent } from '@/lib/calculations'
@@ -15,7 +15,7 @@ const dealTypeIcons: Record<DealType, React.ReactNode> = {
   'new-business': <Handshake size={20} className="text-primary" weight="duotone" />,
   'renewal': <Repeat size={20} className="text-primary" weight="duotone" />,
   'upsell-cross-sell': <TrendUp size={20} className="text-primary" weight="duotone" />,
-  'competitive': <SwordsCrossed size={20} className="text-primary" weight="duotone" />,
+  'competitive': <Sword size={20} className="text-primary" weight="duotone" />,
   'azure-macc': <CloudArrowUp size={20} className="text-primary" weight="duotone" />
 }
 
