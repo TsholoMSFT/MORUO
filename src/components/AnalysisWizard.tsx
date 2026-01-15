@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -8,8 +8,10 @@ import { Slider } from '@/components/ui/slider'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { IndustrySelector } from './IndustrySelector'
-import { ArrowRight, ArrowLeft, CheckCircle, Lightbulb, MagnifyingGlass } from '@phosphor-icons/react'
+import { ArrowRight, ArrowLeft, CheckCircle, Lightbulb, MagnifyingGlass, CloudArrowDown, Info, SpinnerGap, ArrowCounterClockwise, Handshake, ArrowsClockwise, TrendUp, Sword, CloudArrowUp } from '@phosphor-icons/react'
+import { fetchCompanyFinancials, enrichFinancialsWithAI, type CompanyFinancials } from '@/lib/data-sources'
 import type {
   ProjectBasics,
   BaselineMetrics,
@@ -18,7 +20,9 @@ import type {
   Industry,
   SolutionArea,
   Analysis,
+  DealType,
 } from '@/lib/types'
+import { DEAL_TYPE_INFO } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { REGION_OPTIONS, getSubsidiariesForRegion } from '@/lib/regions'
 import { getCompanySuggestions, isValidTickerFormat } from '@/lib/company-detection'
@@ -48,6 +52,14 @@ export function AnalysisWizard({ onComplete, onCancel, initialData }: AnalysisWi
     suggestedIndustry: Industry | null
     confidence: 'high' | 'medium' | 'low'
   } | null>(null)
+  
+  // Financial data fetching state
+  const [isFetchingFinancials, setIsFetchingFinancials] = useState(false)
+  const [fetchedFinancials, setFetchedFinancials] = useState<CompanyFinancials | null>(null)
+  const [financialsFetchError, setFinancialsFetchError] = useState<string | null>(null)
+  const [dataSource, setDataSource] = useState<string | null>(null)
+  const [metricExplanations, setMetricExplanations] = useState<Record<string, string>>({})
+  const [hasBeenEdited, setHasBeenEdited] = useState<Record<string, boolean>>({})
 
   const [projectBasics, setProjectBasics] = useState<ProjectBasics>({
     name: initialData?.projectBasics?.name ?? '',
@@ -56,10 +68,17 @@ export function AnalysisWizard({ onComplete, onCancel, initialData }: AnalysisWi
     region: initialData?.projectBasics?.region ?? '',
     description: initialData?.projectBasics?.description ?? '',
     industry: initialData?.projectBasics?.industry ?? 'general',
+    dealType: initialData?.projectBasics?.dealType ?? 'new-business',
     solutionArea: initialData?.projectBasics?.solutionArea ?? 'Other',
     solutionAreas: initialData?.projectBasics?.solutionAreas ?? [],
     investmentAmount: initialData?.projectBasics?.investmentAmount ?? 100000,
     timelineMonths: initialData?.projectBasics?.timelineMonths ?? 12,
+    maccCommitmentAmount: initialData?.projectBasics?.maccCommitmentAmount,
+    maccTermYears: initialData?.projectBasics?.maccTermYears,
+    competitorName: initialData?.projectBasics?.competitorName,
+    incumbentSolution: initialData?.projectBasics?.incumbentSolution,
+    previousContractValue: initialData?.projectBasics?.previousContractValue,
+    previousTermYears: initialData?.projectBasics?.previousTermYears,
   })
 
   const [baselineMetrics, setBaselineMetrics] = useState<BaselineMetrics>(
@@ -91,6 +110,117 @@ export function AnalysisWizard({ onComplete, onCancel, initialData }: AnalysisWi
       innovationEnablement: 3,
     }
   )
+
+  // Fetch financial data from multiple sources
+  const handleFetchFinancials = useCallback(async () => {
+    const tickerToFetch = ticker.trim() || companySuggestions?.suggestedTicker
+    if (!tickerToFetch) {
+      setFinancialsFetchError('Please enter a stock ticker or company name first')
+      return
+    }
+
+    setIsFetchingFinancials(true)
+    setFinancialsFetchError(null)
+
+    try {
+      const result = await fetchCompanyFinancials(tickerToFetch, {
+        mergeResults: true,
+        timeout: 20000,
+      })
+
+      if (result.data) {
+        setFetchedFinancials(result.data)
+        setDataSource(result.source)
+        
+        // Auto-populate baseline metrics
+        setBaselineMetrics({
+          currentRevenue: result.data.revenue ?? undefined,
+          currentCosts: result.data.totalLiabilities ?? undefined,
+          employeeCount: result.data.employeeCount ?? undefined,
+          currentAssets: result.data.totalAssets ?? undefined,
+          currentCashFlow: result.data.operatingCashFlow ?? undefined,
+        })
+        
+        // Generate AI enrichment for explanations
+        try {
+          const enrichment = await enrichFinancialsWithAI(result.data)
+          setMetricExplanations(enrichment.explanations)
+        } catch {
+          // Use default explanations if AI fails
+          setMetricExplanations({
+            revenue: 'Total revenue from the latest fiscal year',
+            netMargin: 'Net profit as a percentage of revenue',
+            employeeCount: 'Total number of employees',
+          })
+        }
+        
+        setHasBeenEdited({})
+      } else {
+        setFinancialsFetchError(result.error || 'Unable to fetch financial data')
+      }
+    } catch (error) {
+      setFinancialsFetchError(
+        error instanceof Error ? error.message : 'Failed to fetch financial data'
+      )
+    } finally {
+      setIsFetchingFinancials(false)
+    }
+  }, [ticker, companySuggestions?.suggestedTicker])
+
+  // Reset to fetched values
+  const handleResetToFetched = useCallback(() => {
+    if (fetchedFinancials) {
+      setBaselineMetrics({
+        currentRevenue: fetchedFinancials.revenue ?? undefined,
+        currentCosts: fetchedFinancials.totalLiabilities ?? undefined,
+        employeeCount: fetchedFinancials.employeeCount ?? undefined,
+        currentAssets: fetchedFinancials.totalAssets ?? undefined,
+        currentCashFlow: fetchedFinancials.operatingCashFlow ?? undefined,
+      })
+      setHasBeenEdited({})
+    }
+  }, [fetchedFinancials])
+
+  // Track edits
+  const handleMetricChange = (field: keyof BaselineMetrics, value: number | undefined) => {
+    setBaselineMetrics(prev => ({ ...prev, [field]: value }))
+    if (fetchedFinancials) {
+      setHasBeenEdited(prev => ({ ...prev, [field]: true }))
+    }
+  }
+
+  // Handle deal type change - apply default projections
+  const handleDealTypeChange = (dealType: DealType) => {
+    const dealInfo = DEAL_TYPE_INFO[dealType]
+    setProjectBasics(prev => ({ ...prev, dealType }))
+    
+    // Apply default projections for the deal type
+    if (dealInfo.defaultProjections) {
+      setImpactProjections(prev => ({
+        ...prev,
+        ...dealInfo.defaultProjections,
+      }))
+    }
+    
+    // Apply default strategic weights
+    if (dealInfo.defaultStrategicWeights) {
+      setStrategicFactors(prev => ({
+        ...prev,
+        ...dealInfo.defaultStrategicWeights,
+      }))
+    }
+  }
+
+  // Get deal type icon
+  const getDealTypeIcon = (dealType: DealType) => {
+    switch (dealType) {
+      case 'new-business': return <Handshake className="h-5 w-5" />
+      case 'renewal': return <ArrowsClockwise className="h-5 w-5" />
+      case 'upsell-cross-sell': return <TrendUp className="h-5 w-5" />
+      case 'competitive': return <Sword className="h-5 w-5" />
+      case 'azure-macc': return <CloudArrowUp className="h-5 w-5" />
+    }
+  }
 
   // Auto-detect company type and suggest ticker when customer name changes
   useEffect(() => {
@@ -256,6 +386,16 @@ Provide a brief 2-3 sentence suggestion about which solution area(s) this use ca
               </p>
             </div>
 
+            {/* Step Explanation */}
+            <Alert className="bg-primary/5 border-primary/20">
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Getting started:</strong> Enter your customer's name and the use case you're evaluating. 
+                For public companies, enter their stock ticker to fetch real financial data automatically.
+                Select the Microsoft solution areas that apply to enable relevant industry benchmarks.
+              </AlertDescription>
+            </Alert>
+
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
@@ -329,6 +469,224 @@ Provide a brief 2-3 sentence suggestion about which solution area(s) this use ca
                   placeholder="e.g., AI-Powered Customer Service Platform"
                 />
               </div>
+
+              {/* Deal Type Selection */}
+              <div className="space-y-3">
+                <Label>Deal Type *</Label>
+                <p className="text-sm text-muted-foreground">
+                  Select the type of deal to apply appropriate analysis methodology and reporting emphasis
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {(Object.keys(DEAL_TYPE_INFO) as DealType[]).map((dealType) => {
+                    const info = DEAL_TYPE_INFO[dealType]
+                    const isSelected = projectBasics.dealType === dealType
+                    return (
+                      <div
+                        key={dealType}
+                        onClick={() => handleDealTypeChange(dealType)}
+                        className={cn(
+                          'flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-all hover:border-primary/50',
+                          isSelected
+                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                            : 'border-border bg-card'
+                        )}
+                      >
+                        <div className={cn(
+                          'mt-0.5 shrink-0 rounded-md p-2',
+                          isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                        )}>
+                          {getDealTypeIcon(dealType)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm">{info.shortName}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                            {info.description}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Deal type specific context */}
+                {projectBasics.dealType && (
+                  <div className="rounded-lg border bg-card/50 p-4 mt-4">
+                    <div className="flex items-start gap-3">
+                      <div className="shrink-0 rounded-md bg-primary/10 p-2 text-primary">
+                        {getDealTypeIcon(projectBasics.dealType)}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium">{DEAL_TYPE_INFO[projectBasics.dealType].name}</h4>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          <strong>Pricing approach:</strong> {DEAL_TYPE_INFO[projectBasics.dealType].characteristics.pricingApproach}
+                        </p>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground">PROPOSAL EMPHASIS</p>
+                            <ul className="text-xs mt-1 space-y-0.5">
+                              {DEAL_TYPE_INFO[projectBasics.dealType].characteristics.proposalEmphasis.slice(0, 2).map((item, i) => (
+                                <li key={i} className="flex items-start gap-1">
+                                  <span className="text-primary">•</span>
+                                  <span>{item}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground">KEY METRICS</p>
+                            <ul className="text-xs mt-1 space-y-0.5">
+                              {DEAL_TYPE_INFO[projectBasics.dealType].characteristics.keyMetrics.slice(0, 2).map((item, i) => (
+                                <li key={i} className="flex items-start gap-1">
+                                  <span className="text-primary">•</span>
+                                  <span>{item}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Conditional fields based on deal type */}
+              {projectBasics.dealType === 'azure-macc' && (
+                <div className="grid gap-4 sm:grid-cols-2 p-4 rounded-lg border bg-blue-500/5 border-blue-500/20">
+                  <div className="sm:col-span-2">
+                    <p className="text-sm font-medium text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                      <CloudArrowUp className="h-4 w-4" />
+                      Azure MACC Details
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="macc-amount">MACC Commitment Amount ($)</Label>
+                    <Input
+                      id="macc-amount"
+                      type="number"
+                      value={projectBasics.maccCommitmentAmount || ''}
+                      onChange={(e) =>
+                        setProjectBasics({
+                          ...projectBasics,
+                          maccCommitmentAmount: parseFloat(e.target.value) || undefined,
+                        })
+                      }
+                      placeholder="e.g., 5000000"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="macc-term">Commitment Term (Years)</Label>
+                    <Select
+                      value={projectBasics.maccTermYears?.toString() || ''}
+                      onValueChange={(value) =>
+                        setProjectBasics({
+                          ...projectBasics,
+                          maccTermYears: parseInt(value) || undefined,
+                        })
+                      }
+                    >
+                      <SelectTrigger id="macc-term">
+                        <SelectValue placeholder="Select term" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 Year</SelectItem>
+                        <SelectItem value="2">2 Years</SelectItem>
+                        <SelectItem value="3">3 Years</SelectItem>
+                        <SelectItem value="4">4 Years</SelectItem>
+                        <SelectItem value="5">5 Years</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+
+              {projectBasics.dealType === 'competitive' && (
+                <div className="grid gap-4 sm:grid-cols-2 p-4 rounded-lg border bg-orange-500/5 border-orange-500/20">
+                  <div className="sm:col-span-2">
+                    <p className="text-sm font-medium text-orange-600 dark:text-orange-400 flex items-center gap-2">
+                      <Sword className="h-4 w-4" />
+                      Competitive Details
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="competitor-name">Competitor Name</Label>
+                    <Input
+                      id="competitor-name"
+                      value={projectBasics.competitorName || ''}
+                      onChange={(e) =>
+                        setProjectBasics({
+                          ...projectBasics,
+                          competitorName: e.target.value,
+                        })
+                      }
+                      placeholder="e.g., AWS, Google Cloud, Salesforce"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="incumbent-solution">Incumbent Solution</Label>
+                    <Input
+                      id="incumbent-solution"
+                      value={projectBasics.incumbentSolution || ''}
+                      onChange={(e) =>
+                        setProjectBasics({
+                          ...projectBasics,
+                          incumbentSolution: e.target.value,
+                        })
+                      }
+                      placeholder="e.g., AWS EC2, Google Workspace"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {projectBasics.dealType === 'renewal' && (
+                <div className="grid gap-4 sm:grid-cols-2 p-4 rounded-lg border bg-green-500/5 border-green-500/20">
+                  <div className="sm:col-span-2">
+                    <p className="text-sm font-medium text-green-600 dark:text-green-400 flex items-center gap-2">
+                      <ArrowsClockwise className="h-4 w-4" />
+                      Previous Contract Details
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="prev-contract-value">Previous Contract Value ($)</Label>
+                    <Input
+                      id="prev-contract-value"
+                      type="number"
+                      value={projectBasics.previousContractValue || ''}
+                      onChange={(e) =>
+                        setProjectBasics({
+                          ...projectBasics,
+                          previousContractValue: parseFloat(e.target.value) || undefined,
+                        })
+                      }
+                      placeholder="e.g., 500000"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="prev-term">Previous Term (Years)</Label>
+                    <Select
+                      value={projectBasics.previousTermYears?.toString() || ''}
+                      onValueChange={(value) =>
+                        setProjectBasics({
+                          ...projectBasics,
+                          previousTermYears: parseInt(value) || undefined,
+                        })
+                      }
+                    >
+                      <SelectTrigger id="prev-term">
+                        <SelectValue placeholder="Select term" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 Year</SelectItem>
+                        <SelectItem value="2">2 Years</SelectItem>
+                        <SelectItem value="3">3 Years</SelectItem>
+                        <SelectItem value="4">4 Years</SelectItem>
+                        <SelectItem value="5">5 Years</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
@@ -494,6 +852,21 @@ Provide a brief 2-3 sentence suggestion about which solution area(s) this use ca
               </p>
             </div>
 
+            {/* Step Explanation */}
+            <Alert className="bg-primary/5 border-primary/20">
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Why industry matters:</strong> Different industries have different baseline metrics, 
+                growth rates, and technology adoption patterns. Selecting the correct industry ensures your 
+                analysis uses appropriate benchmarks for ROI calculations and competitive comparisons.
+                {companySuggestions?.suggestedIndustry && (
+                  <span className="block mt-1">
+                    <strong>Suggested:</strong> Based on your company, we recommend <em>{companySuggestions.suggestedIndustry}</em>.
+                  </span>
+                )}
+              </AlertDescription>
+            </Alert>
+
             <IndustrySelector
               value={projectBasics.industry}
               onChange={(industry: Industry) =>
@@ -512,71 +885,230 @@ Provide a brief 2-3 sentence suggestion about which solution area(s) this use ca
               </p>
             </div>
 
+            {/* Step Explanation */}
+            <Alert className="bg-primary/5 border-primary/20">
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Why these metrics matter:</strong> Baseline metrics establish the current financial state of the company.
+                They're used to calculate ROI, payback period, and value generated by your technology use case.
+                {ticker || companySuggestions?.suggestedTicker ? (
+                  <> Click <strong>"Fetch Financial Data"</strong> to auto-populate from public financial sources.</>
+                ) : (
+                  <> Enter a stock ticker above to auto-fetch financial data from multiple sources.</>
+                )}
+              </AlertDescription>
+            </Alert>
+
+            {/* Fetch Financial Data Button */}
+            {(ticker || companySuggestions?.suggestedTicker) && !isPrivateCompany && (
+              <div className="flex items-center gap-3 p-4 rounded-lg border bg-card">
+                <div className="flex-1">
+                  <p className="font-medium text-sm">Auto-populate from financial data sources</p>
+                  <p className="text-xs text-muted-foreground">
+                    Fetches from Yahoo Finance, Alpha Vantage, FMP, SEC EDGAR, and more
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleFetchFinancials}
+                  disabled={isFetchingFinancials}
+                  className="gap-2"
+                >
+                  {isFetchingFinancials ? (
+                    <>
+                      <SpinnerGap className="h-4 w-4 animate-spin" />
+                      Fetching...
+                    </>
+                  ) : (
+                    <>
+                      <CloudArrowDown className="h-4 w-4" />
+                      Fetch Financial Data
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {/* Fetch Status */}
+            {fetchedFinancials && dataSource && (
+              <div className="flex items-center justify-between p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" weight="fill" />
+                  <span className="text-sm text-green-600 dark:text-green-400">
+                    Data loaded from <strong>{dataSource}</strong>
+                    {fetchedFinancials.lastUpdated && (
+                      <span className="text-xs opacity-70 ml-1">
+                        (as of {new Date(fetchedFinancials.lastUpdated).toLocaleDateString()})
+                      </span>
+                    )}
+                  </span>
+                </div>
+                {Object.values(hasBeenEdited).some(Boolean) && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleResetToFetched}
+                    className="gap-1 text-xs"
+                  >
+                    <ArrowCounterClockwise className="h-3 w-3" />
+                    Reset to fetched
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {financialsFetchError && (
+              <Alert variant="destructive">
+                <AlertDescription>{financialsFetchError}</AlertDescription>
+              </Alert>
+            )}
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="current-revenue">Current Annual Revenue ($)</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="current-revenue">Current Annual Revenue ($)</Label>
+                  {hasBeenEdited.currentRevenue && (
+                    <Badge variant="outline" className="text-xs">Edited</Badge>
+                  )}
+                </div>
                 <Input
                   id="current-revenue"
                   type="number"
                   value={baselineMetrics.currentRevenue || ''}
                   onChange={(e) =>
-                    setBaselineMetrics({
-                      ...baselineMetrics,
-                      currentRevenue: parseFloat(e.target.value) || undefined,
-                    })
+                    handleMetricChange('currentRevenue', parseFloat(e.target.value) || undefined)
                   }
                   placeholder="Optional"
                 />
+                {metricExplanations.revenue && (
+                  <p className="text-xs text-muted-foreground">{metricExplanations.revenue}</p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="current-costs">Current Annual Costs ($)</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="current-costs">Current Annual Costs ($)</Label>
+                  {hasBeenEdited.currentCosts && (
+                    <Badge variant="outline" className="text-xs">Edited</Badge>
+                  )}
+                </div>
                 <Input
                   id="current-costs"
                   type="number"
                   value={baselineMetrics.currentCosts || ''}
                   onChange={(e) =>
-                    setBaselineMetrics({
-                      ...baselineMetrics,
-                      currentCosts: parseFloat(e.target.value) || undefined,
-                    })
+                    handleMetricChange('currentCosts', parseFloat(e.target.value) || undefined)
                   }
                   placeholder="Optional"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Total operating costs including salaries, infrastructure, and overhead
+                </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="employee-count">Employee Count</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="employee-count">Employee Count</Label>
+                  {hasBeenEdited.employeeCount && (
+                    <Badge variant="outline" className="text-xs">Edited</Badge>
+                  )}
+                </div>
                 <Input
                   id="employee-count"
                   type="number"
                   value={baselineMetrics.employeeCount || ''}
                   onChange={(e) =>
-                    setBaselineMetrics({
-                      ...baselineMetrics,
-                      employeeCount: parseInt(e.target.value) || undefined,
-                    })
+                    handleMetricChange('employeeCount', parseInt(e.target.value) || undefined)
                   }
                   placeholder="Optional"
                 />
+                {metricExplanations.employeeCount ? (
+                  <p className="text-xs text-muted-foreground">{metricExplanations.employeeCount}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Total headcount; used to calculate productivity gains
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="current-assets">Current Assets ($)</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="current-assets">Current Assets ($)</Label>
+                  {hasBeenEdited.currentAssets && (
+                    <Badge variant="outline" className="text-xs">Edited</Badge>
+                  )}
+                </div>
                 <Input
                   id="current-assets"
                   type="number"
                   value={baselineMetrics.currentAssets || ''}
                   onChange={(e) =>
-                    setBaselineMetrics({
-                      ...baselineMetrics,
-                      currentAssets: parseFloat(e.target.value) || undefined,
-                    })
+                    handleMetricChange('currentAssets', parseFloat(e.target.value) || undefined)
                   }
                   placeholder="Optional"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Total value of assets; used to calculate return on assets
+                </p>
+              </div>
+
+              <div className="space-y-2 sm:col-span-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="current-cashflow">Current Operating Cash Flow ($)</Label>
+                  {hasBeenEdited.currentCashFlow && (
+                    <Badge variant="outline" className="text-xs">Edited</Badge>
+                  )}
+                </div>
+                <Input
+                  id="current-cashflow"
+                  type="number"
+                  value={baselineMetrics.currentCashFlow || ''}
+                  onChange={(e) =>
+                    handleMetricChange('currentCashFlow', parseFloat(e.target.value) || undefined)
+                  }
+                  placeholder="Optional"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Cash generated from operations; key indicator of business health
+                </p>
               </div>
             </div>
+
+            {/* Additional fetched data preview */}
+            {fetchedFinancials && (
+              <div className="mt-4 p-4 rounded-lg border bg-card/50">
+                <h4 className="text-sm font-medium mb-3">Additional Financial Context</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                  {fetchedFinancials.netMargin !== null && (
+                    <div>
+                      <p className="text-muted-foreground text-xs">Net Margin</p>
+                      <p className="font-medium">{fetchedFinancials.netMargin.toFixed(1)}%</p>
+                    </div>
+                  )}
+                  {fetchedFinancials.returnOnEquity !== null && (
+                    <div>
+                      <p className="text-muted-foreground text-xs">ROE</p>
+                      <p className="font-medium">{fetchedFinancials.returnOnEquity.toFixed(1)}%</p>
+                    </div>
+                  )}
+                  {fetchedFinancials.debtToEquity !== null && (
+                    <div>
+                      <p className="text-muted-foreground text-xs">Debt/Equity</p>
+                      <p className="font-medium">{fetchedFinancials.debtToEquity.toFixed(2)}</p>
+                    </div>
+                  )}
+                  {fetchedFinancials.peRatio !== null && (
+                    <div>
+                      <p className="text-muted-foreground text-xs">P/E Ratio</p>
+                      <p className="font-medium">{fetchedFinancials.peRatio.toFixed(1)}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -589,10 +1121,29 @@ Provide a brief 2-3 sentence suggestion about which solution area(s) this use ca
               </p>
             </div>
 
+            {/* Step Explanation with Deal Type Context */}
+            <Alert className="bg-primary/5 border-primary/20">
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Setting realistic expectations:</strong> These projections estimate how the technology 
+                will impact your customer's business. 
+                {projectBasics.dealType && (
+                  <span className="block mt-1">
+                    For <strong>{DEAL_TYPE_INFO[projectBasics.dealType].shortName}</strong> deals, 
+                    we've pre-set recommended values based on typical outcomes. Adjust as needed based on your specific opportunity.
+                  </span>
+                )}
+                Industry benchmarks suggest AI initiatives typically deliver 10-25% efficiency gains in the first year.
+              </AlertDescription>
+            </Alert>
+
             <div className="space-y-6">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label>Revenue Growth Rate (%)</Label>
+                  <div>
+                    <Label>Revenue Growth Rate (%)</Label>
+                    <p className="text-xs text-muted-foreground">Additional revenue growth attributed to this investment</p>
+                  </div>
                   <span className="font-mono text-sm font-medium">
                     {impactProjections.revenueGrowthRate}%
                   </span>
@@ -610,7 +1161,10 @@ Provide a brief 2-3 sentence suggestion about which solution area(s) this use ca
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label>Cost Reduction (%)</Label>
+                  <div>
+                    <Label>Cost Reduction (%)</Label>
+                    <p className="text-xs text-muted-foreground">Reduction in operational costs from automation and optimization</p>
+                  </div>
                   <span className="font-mono text-sm font-medium">
                     {impactProjections.costReduction}%
                   </span>
@@ -628,7 +1182,10 @@ Provide a brief 2-3 sentence suggestion about which solution area(s) this use ca
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label>Efficiency Gain (%)</Label>
+                  <div>
+                    <Label>Efficiency Gain (%)</Label>
+                    <p className="text-xs text-muted-foreground">Productivity improvement for affected employees</p>
+                  </div>
                   <span className="font-mono text-sm font-medium">
                     {impactProjections.efficiencyGain}%
                   </span>
@@ -646,7 +1203,10 @@ Provide a brief 2-3 sentence suggestion about which solution area(s) this use ca
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label>Time-to-Market Improvement (%)</Label>
+                  <div>
+                    <Label>Time-to-Market Improvement (%)</Label>
+                    <p className="text-xs text-muted-foreground">Faster delivery of products or services</p>
+                  </div>
                   <span className="font-mono text-sm font-medium">
                     {impactProjections.timeToMarketImprovement}%
                   </span>
@@ -674,19 +1234,146 @@ Provide a brief 2-3 sentence suggestion about which solution area(s) this use ca
               </p>
             </div>
 
+            {/* Step Explanation */}
+            <Alert className="bg-primary/5 border-primary/20">
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Beyond the numbers:</strong> Technology investments deliver value beyond direct ROI. 
+                These strategic factors capture competitive advantages, risk reduction, and long-term positioning 
+                that may not immediately show in financial metrics but are critical for decision-making.
+                Rate each factor based on how significantly this use case impacts that dimension.
+              </AlertDescription>
+            </Alert>
+
+            {/* Deal Type Strategic Focus */}
+            {(() => {
+              const dealTypeStrategicAdvice: Record<DealType, { focus: string[]; advice: string }> = {
+                'new-business': {
+                  focus: ['competitiveDifferentiation', 'innovationEnablement'],
+                  advice: 'For new business, emphasize competitive differentiation and innovation potential to demonstrate transformative value.'
+                },
+                'renewal': {
+                  focus: ['customerExperience', 'riskMitigation'],
+                  advice: 'For renewals, highlight customer experience improvements and risk mitigation from continued partnership stability.'
+                },
+                'upsell-cross-sell': {
+                  focus: ['employeeProductivity', 'innovationEnablement'],
+                  advice: 'For expansion deals, focus on productivity gains and how additional capabilities enable new innovations.'
+                },
+                'competitive': {
+                  focus: ['competitiveDifferentiation', 'riskMitigation'],
+                  advice: 'For competitive situations, strongly emphasize differentiation from alternatives and lower switching risk.'
+                },
+                'azure-macc': {
+                  focus: ['innovationEnablement', 'regulatoryCompliance'],
+                  advice: 'For Azure MACC, highlight cloud innovation enablement and compliance benefits of the Azure platform.'
+                }
+              }
+              const currentAdvice = dealTypeStrategicAdvice[projectBasics.dealType || 'new-business']
+              
+              return (
+                <div className="p-4 rounded-lg border bg-card/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    {dealTypeIcons[projectBasics.dealType || 'new-business']}
+                    <span className="font-medium">{DEAL_TYPE_INFO[projectBasics.dealType || 'new-business'].name} - Strategic Focus</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-2">{currentAdvice.advice}</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {currentAdvice.focus.map(factor => (
+                      <span key={factor} className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
+                        ★ {factor.replace(/([A-Z])/g, ' $1').trim()}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
+
             <div className="space-y-6">
               {[
-                { key: 'competitiveDifferentiation', label: 'Competitive Differentiation' },
-                { key: 'riskMitigation', label: 'Risk Mitigation' },
-                { key: 'customerExperience', label: 'Customer Experience Improvement' },
-                { key: 'employeeProductivity', label: 'Employee Productivity Gains' },
-                { key: 'regulatoryCompliance', label: 'Regulatory Compliance Benefits' },
-                { key: 'innovationEnablement', label: 'Innovation Enablement' },
+                { 
+                  key: 'competitiveDifferentiation', 
+                  label: 'Competitive Differentiation',
+                  description: 'How much does this create unique market advantage?',
+                  dealTypeHints: {
+                    'new-business': 'Key for winning new logos - rate high if this clearly differentiates from competitors',
+                    'renewal': 'Consider value delivered vs. alternatives the customer might evaluate',
+                    'upsell-cross-sell': 'Does the expanded capability create new competitive moats?',
+                    'competitive': 'CRITICAL: Rate this factor generously to highlight advantages over competitor',
+                    'azure-macc': 'How does Azure uniquely enable capabilities competitors can\'t match?'
+                  }
+                },
+                { 
+                  key: 'riskMitigation', 
+                  label: 'Risk Mitigation',
+                  description: 'Does this reduce business, operational, or compliance risk?',
+                  dealTypeHints: {
+                    'new-business': 'Consider security, reliability, and vendor stability',
+                    'renewal': 'IMPORTANT: Emphasize risks of switching to a new platform mid-stream',
+                    'upsell-cross-sell': 'Does expansion reduce gaps in current coverage?',
+                    'competitive': 'Highlight incumbent switching risks and competitor platform risks',
+                    'azure-macc': 'Consider Azure\'s security, compliance, and data sovereignty features'
+                  }
+                },
+                { 
+                  key: 'customerExperience', 
+                  label: 'Customer Experience Improvement',
+                  description: 'Impact on customer satisfaction and retention',
+                  dealTypeHints: {
+                    'new-business': 'Will this improve how they serve their customers?',
+                    'renewal': 'KEY FACTOR: Document CX improvements achieved during current term',
+                    'upsell-cross-sell': 'How do additional features enhance customer-facing capabilities?',
+                    'competitive': 'Compare CX capabilities vs. competitor offering',
+                    'azure-macc': 'How does Azure enable better customer experiences?'
+                  }
+                },
+                { 
+                  key: 'employeeProductivity', 
+                  label: 'Employee Productivity Gains',
+                  description: 'Time saved and output increased for employees',
+                  dealTypeHints: {
+                    'new-business': 'Quantify productivity gains where possible',
+                    'renewal': 'Measure gains achieved and project future improvements',
+                    'upsell-cross-sell': 'FOCUS AREA: Expansion should multiply productivity benefits',
+                    'competitive': 'Compare productivity features vs. competitor',
+                    'azure-macc': 'Consider Copilot, automation, and AI productivity features'
+                  }
+                },
+                { 
+                  key: 'regulatoryCompliance', 
+                  label: 'Regulatory Compliance Benefits',
+                  description: 'Does this help meet current or upcoming regulations?',
+                  dealTypeHints: {
+                    'new-business': 'Important for regulated industries (finance, healthcare, etc.)',
+                    'renewal': 'Highlight ongoing compliance maintenance value',
+                    'upsell-cross-sell': 'Do additional services address new compliance requirements?',
+                    'competitive': 'Compare compliance certifications vs. competitor',
+                    'azure-macc': 'IMPORTANT: Azure has industry-leading compliance certifications'
+                  }
+                },
+                { 
+                  key: 'innovationEnablement', 
+                  label: 'Innovation Enablement',
+                  description: 'Does this unlock future innovation opportunities?',
+                  dealTypeHints: {
+                    'new-business': 'KEY: Show how this opens doors to future capabilities',
+                    'renewal': 'Roadmap alignment and future innovation potential',
+                    'upsell-cross-sell': 'FOCUS: Expansion enables new innovation scenarios',
+                    'competitive': 'Compare innovation roadmaps and platform extensibility',
+                    'azure-macc': 'CRITICAL: Highlight Azure AI, OpenAI integration, and cloud-native innovation'
+                  }
+                },
               ].map((factor) => (
                 <div key={factor.key} className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label>{factor.label}</Label>
-                    <span className="font-mono text-sm font-medium">
+                    <div className="flex-1">
+                      <Label>{factor.label}</Label>
+                      <p className="text-xs text-muted-foreground">{factor.description}</p>
+                      <p className="text-xs text-primary/80 mt-1">
+                        💡 {factor.dealTypeHints[projectBasics.dealType || 'new-business']}
+                      </p>
+                    </div>
+                    <span className="font-mono text-sm font-medium ml-4">
                       {strategicFactors[factor.key as keyof StrategicFactors]}/5
                     </span>
                   </div>
