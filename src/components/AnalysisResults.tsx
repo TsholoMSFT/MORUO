@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -10,10 +11,15 @@ import { PriorityBadge } from './PriorityBadge'
 import { BenchmarkComparison } from './BenchmarkComparison'
 import { StockPerformanceCard } from './StockPerformanceCard'
 import { FundamentalOverview } from './FundamentalOverview'
+import { MonteCarloVisualization } from './MonteCarloVisualization'
+import { CustomerPresentationView } from './CustomerPresentationView'
+import { InternalPlanningView } from './InternalPlanningView'
 import { useMarketData, useCompleteMarketContext } from '@/hooks/useStockData'
 import { getIndustryIndexInfo } from '@/lib/stock-api'
 import { detectCompanyType } from '@/lib/company-detection'
 import { generateMockEarningsInsights, calculateSentimentScore, extractTechThemes } from '@/lib/earnings-analysis'
+import type { MonteCarloResults } from '@/lib/monte-carlo'
+import type { GeneratedNarrative, NarrativeCache } from '@/lib/ai-narratives'
 import {
   CheckCircle,
   Warning,
@@ -25,10 +31,23 @@ import {
   PencilSimple,
   ChartLine,
   ChatCircle,
+  Handshake,
+  Repeat,
+  SwordsCrossed,
+  CloudArrowUp,
 } from '@phosphor-icons/react'
-import type { Analysis } from '@/lib/types'
+import type { Analysis, DealType } from '@/lib/types'
+import { DEAL_TYPE_INFO } from '@/lib/types'
 import { formatCurrency, formatPercent } from '@/lib/calculations'
 import { industryBenchmarks } from '@/lib/benchmarks'
+
+const dealTypeIcons: Record<DealType, React.ReactNode> = {
+  'new-business': <Handshake size={16} weight="duotone" />,
+  'renewal': <Repeat size={16} weight="duotone" />,
+  'upsell-cross-sell': <TrendUp size={16} weight="duotone" />,
+  'competitive': <SwordsCrossed size={16} weight="duotone" />,
+  'azure-macc': <CloudArrowUp size={16} weight="duotone" />
+}
 
 interface AnalysisResultsProps {
   analysis: Analysis
@@ -39,6 +58,13 @@ interface AnalysisResultsProps {
 }
 
 export function AnalysisResults({ analysis, onBack, onSave, onEdit, isSaved }: AnalysisResultsProps) {
+  const [monteCarloResults, setMonteCarloResults] = useState<MonteCarloResults | undefined>(
+    analysis.monteCarloResults as MonteCarloResults | undefined
+  )
+  const [narratives, setNarratives] = useState<NarrativeCache | undefined>(
+    analysis.narratives as NarrativeCache | undefined
+  )
+  
   const { projectBasics, results, recommendation } = analysis
   const benchmark = industryBenchmarks[projectBasics.industry]
   
@@ -103,6 +129,15 @@ export function AnalysisResults({ analysis, onBack, onSave, onEdit, isSaved }: A
             <span>{formatCurrency(projectBasics.investmentAmount)} investment</span>
             <span>•</span>
             <span>{projectBasics.timelineMonths} month timeline</span>
+            {projectBasics.dealType && (
+              <>
+                <span>•</span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                  {dealTypeIcons[projectBasics.dealType]}
+                  {DEAL_TYPE_INFO[projectBasics.dealType].name}
+                </span>
+              </>
+            )}
           </div>
         </div>
         <div className="flex gap-2">
@@ -138,12 +173,14 @@ export function AnalysisResults({ analysis, onBack, onSave, onEdit, isSaved }: A
       </Card>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="financial">Financial</TabsTrigger>
+          <TabsTrigger value="risk">Risk Analysis</TabsTrigger>
           <TabsTrigger value="strategic">Strategic</TabsTrigger>
           <TabsTrigger value="market">Market Context</TabsTrigger>
-          <TabsTrigger value="implementation">Implementation</TabsTrigger>
+          <TabsTrigger value="customer-view">Customer View</TabsTrigger>
+          <TabsTrigger value="internal-view">Internal View</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -628,9 +665,7 @@ export function AnalysisResults({ analysis, onBack, onSave, onEdit, isSaved }: A
               ))}
             </div>
           </div>
-        </TabsContent>
 
-        <TabsContent value="implementation" className="space-y-6">
           <div>
             <h3 className="mb-4 font-heading text-xl font-semibold">
               <Warning className="mr-2 inline" size={24} />
@@ -686,6 +721,38 @@ export function AnalysisResults({ analysis, onBack, onSave, onEdit, isSaved }: A
               </div>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="risk" className="space-y-6">
+          <MonteCarloVisualization
+            analysis={analysis}
+            results={monteCarloResults}
+            onResultsGenerated={setMonteCarloResults}
+          />
+        </TabsContent>
+
+        <TabsContent value="customer-view" className="space-y-6">
+          <CustomerPresentationView
+            analysis={analysis}
+            monteCarloResults={monteCarloResults}
+            narrative={narratives?.customer}
+            onMonteCarloComplete={setMonteCarloResults}
+            onNarrativeGenerated={(narrative) =>
+              setNarratives((prev) => ({ ...prev, customer: narrative }))
+            }
+          />
+        </TabsContent>
+
+        <TabsContent value="internal-view" className="space-y-6">
+          <InternalPlanningView
+            analysis={analysis}
+            monteCarloResults={monteCarloResults}
+            narrative={narratives?.internal}
+            onMonteCarloComplete={setMonteCarloResults}
+            onNarrativeGenerated={(narrative) =>
+              setNarratives((prev) => ({ ...prev, internal: narrative }))
+            }
+          />
         </TabsContent>
       </Tabs>
     </div>

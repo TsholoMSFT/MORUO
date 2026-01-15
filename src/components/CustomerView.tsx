@@ -1,14 +1,23 @@
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { PriorityBadge } from './PriorityBadge'
-import { ArrowLeft, Buildings, ChartBar, TrendUp, Calendar } from '@phosphor-icons/react'
-import type { Analysis } from '@/lib/types'
+import { ArrowLeft, Buildings, ChartBar, TrendUp, Calendar, Handshake, Repeat, SwordsCrossed, CloudArrowUp } from '@phosphor-icons/react'
+import type { Analysis, DealType } from '@/lib/types'
+import { DEAL_TYPE_INFO } from '@/lib/types'
 import { formatCurrency, formatPercent } from '@/lib/calculations'
 import { industryBenchmarks } from '@/lib/benchmarks'
 import { Breadcrumb, type BreadcrumbItem } from './Breadcrumb'
 import { StockPerformanceCard } from './StockPerformanceCard'
 import { useMarketData } from '@/hooks/useStockData'
 import { getIndustryIndexInfo } from '@/lib/stock-api'
+
+const dealTypeIcons: Record<DealType, React.ReactNode> = {
+  'new-business': <Handshake size={20} className="text-primary" weight="duotone" />,
+  'renewal': <Repeat size={20} className="text-primary" weight="duotone" />,
+  'upsell-cross-sell': <TrendUp size={20} className="text-primary" weight="duotone" />,
+  'competitive': <SwordsCrossed size={20} className="text-primary" weight="duotone" />,
+  'azure-macc': <CloudArrowUp size={20} className="text-primary" weight="duotone" />
+}
 
 interface CustomerViewProps {
   customerName: string
@@ -66,6 +75,15 @@ export function CustomerView({
       return acc
     },
     {} as Record<string, number>
+  )
+  
+  const dealTypeCounts = analyses.reduce(
+    (acc, a) => {
+      const dealType = a.projectBasics.dealType || 'new-business'
+      acc[dealType] = (acc[dealType] || 0) + 1
+      return acc
+    },
+    {} as Record<DealType, number>
   )
   
   const sortedAnalyses = [...analyses].sort((a, b) => {
@@ -130,7 +148,7 @@ export function CustomerView({
         />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-3">
         <Card className="p-6">
           <h3 className="mb-4 font-heading text-lg font-semibold">Priority Distribution</h3>
           <div className="space-y-3">
@@ -147,6 +165,35 @@ export function CustomerView({
                     <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
                       <div
                         className="h-full bg-accent"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                    <span className="font-mono text-sm tabular-nums text-muted-foreground">
+                      {count}
+                    </span>
+                  </div>
+                </div>
+              ) : null
+            })}
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <h3 className="mb-4 font-heading text-lg font-semibold">Deal Types</h3>
+          <div className="space-y-3">
+            {(Object.keys(DEAL_TYPE_INFO) as DealType[]).map((dealType) => {
+              const count = dealTypeCounts[dealType] || 0
+              const percentage = analyses.length > 0 ? (count / analyses.length) * 100 : 0
+              return count > 0 ? (
+                <div key={dealType} className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    {dealTypeIcons[dealType]}
+                    <span className="text-sm">{DEAL_TYPE_INFO[dealType].name}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full bg-primary"
                         style={{ width: `${percentage}%` }}
                       />
                     </div>
@@ -211,7 +258,15 @@ export function CustomerView({
                         <h3 className="font-heading text-lg font-semibold leading-tight transition-colors group-hover:text-primary">
                           {analysis.projectBasics.name}
                         </h3>
-                        <p className="text-sm text-muted-foreground">{benchmark.name}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-sm text-muted-foreground">{benchmark.name}</p>
+                          {analysis.projectBasics.dealType && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                              {dealTypeIcons[analysis.projectBasics.dealType]}
+                              {DEAL_TYPE_INFO[analysis.projectBasics.dealType].name}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs font-medium text-primary">
                           {analysis.projectBasics.solutionAreas && analysis.projectBasics.solutionAreas.length > 0
                             ? analysis.projectBasics.solutionAreas.join(', ')
