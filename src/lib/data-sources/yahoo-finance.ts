@@ -4,7 +4,8 @@
  */
 
 import type { CompanyFinancials, DataSourceResult } from './types'
-import { getCacheKey, fetchWithCache, CACHE_DURATIONS } from './cache'
+import { CACHE_DURATIONS } from './types'
+import { getCacheKey, fetchWithCache } from './cache'
 
 const YAHOO_BASE_URL = 'https://query1.finance.yahoo.com/v10/finance'
 

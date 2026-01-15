@@ -3,7 +3,7 @@
  * Reduces API calls and improves performance
  */
 
-import type { CacheEntry, DataSourceName, CACHE_DURATIONS } from './types'
+import type { CacheEntry, DataSourceName } from './types'
 
 const CACHE_PREFIX = 'moruo_data_cache_'
 
