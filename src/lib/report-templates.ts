@@ -8,6 +8,7 @@ import { DEAL_TYPE_INFO } from './types'
 import type { MonteCarloResults } from './monte-carlo'
 import type { GeneratedNarrative } from './ai-narratives'
 import { formatCurrency, formatPercent } from './calculations'
+import { formatCustomerOutcomes } from './customer-outcomes'
 
 export type ReportFormat = 'html' | 'markdown' | 'json'
 export type ReportAudience = 'customer' | 'internal' | 'executive'
@@ -231,6 +232,9 @@ function generateHTMLReport(
   const realistic = results.realistic
   const dealSections = getDealTypeSpecificSections(analysis, dealType, options)
 
+  const customerOutcomes = formatCustomerOutcomes(projectBasics.customerOutcomes)
+  const outcomesNotes = (projectBasics.customerOutcomesNotes || '').trim()
+
   const audienceTitles: Record<ReportAudience, string> = {
     customer: 'Business Value Assessment',
     internal: 'Internal Planning Document',
@@ -333,6 +337,16 @@ function generateHTMLReport(
   ` : ''}
 
   <section class="section">
+    ${(customerOutcomes.length > 0 || outcomesNotes) ? `
+    <h2>Customer Outcomes</h2>
+    ${customerOutcomes.length > 0 ? `
+    <ul>
+      ${customerOutcomes.map(o => `<li>${o}</li>`).join('\n')}
+    </ul>
+    ` : '<p><em>No specific outcomes were selected.</em></p>'}
+    ${outcomesNotes ? `<p><strong>Notes:</strong> ${outcomesNotes}</p>` : ''}
+    ` : ''}
+
     <h2>Financial Overview</h2>
     <div class="metrics-grid">
       <div class="metric-card">
@@ -444,6 +458,9 @@ function generateMarkdownReport(
   const realistic = results.realistic
   const dealSections = getDealTypeSpecificSections(analysis, dealType, options)
 
+  const customerOutcomes = formatCustomerOutcomes(projectBasics.customerOutcomes)
+  const outcomesNotes = (projectBasics.customerOutcomesNotes || '').trim()
+
   let md = `# ${projectBasics.name}
 
 **Customer:** ${projectBasics.customerName}  
@@ -479,6 +496,17 @@ ${narrative.valueProposition ? `**Value Proposition:** ${narrative.valueProposit
 | Net Benefit | ${formatCurrency(realistic.netBenefit)} |
 
 `
+
+  if (customerOutcomes.length > 0 || outcomesNotes) {
+    md += `---
+
+## Customer Outcomes
+
+${customerOutcomes.length > 0 ? customerOutcomes.map(o => `- ${o}`).join('\n') : '_No specific outcomes were selected._'}
+
+${outcomesNotes ? `**Notes:** ${outcomesNotes}\n` : ''}
+`
+  }
 
   if (monteCarloResults && options.includeMonteCarloDetails) {
     md += `### Risk-Adjusted Analysis
@@ -562,6 +590,8 @@ function generateJSONReport(
   const dealInfo = DEAL_TYPE_INFO[dealType]
   const dealSections = getDealTypeSpecificSections(analysis, dealType, options)
 
+  const customerOutcomes = formatCustomerOutcomes(projectBasics.customerOutcomes)
+
   const report = {
     metadata: {
       generatedAt: new Date().toISOString(),
@@ -574,6 +604,8 @@ function generateJSONReport(
       customerName: projectBasics.customerName,
       industry: projectBasics.industry,
       solutionAreas: projectBasics.solutionAreas || [projectBasics.solutionArea],
+      customerOutcomes: customerOutcomes,
+      customerOutcomesNotes: projectBasics.customerOutcomesNotes || undefined,
       investmentAmount: projectBasics.investmentAmount,
       timelineMonths: projectBasics.timelineMonths,
     },

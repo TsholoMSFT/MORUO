@@ -8,6 +8,7 @@ import type { Analysis, DealType } from './types'
 import { DEAL_TYPE_INFO } from './types'
 import type { MonteCarloResults } from './monte-carlo'
 import { formatCurrency, formatPercent } from './calculations'
+import { formatCustomerOutcomes } from './customer-outcomes'
 
 export type NarrativeAudience = 'customer' | 'internal' | 'executive'
 
@@ -89,6 +90,18 @@ function buildPrompt(
   const dealType = projectBasics.dealType || 'new-business'
   const dealInfo = DEAL_TYPE_INFO[dealType]
 
+  const customerOutcomes = formatCustomerOutcomes(projectBasics.customerOutcomes)
+  const outcomesNotes = (projectBasics.customerOutcomesNotes || '').trim()
+  const outcomesSection =
+    customerOutcomes.length > 0 || outcomesNotes.length > 0
+      ? `
+
+Customer-Stated Outcomes (Benefits):
+${customerOutcomes.length > 0 ? `- ${customerOutcomes.join('\n- ')}` : '- (not specified)'}
+${outcomesNotes ? `\nOutcomes Notes: ${outcomesNotes}` : ''}
+`
+      : ''
+
   const mcSection = monteCarloResults
     ? `
 
@@ -116,6 +129,7 @@ Solution Area: ${projectBasics.solutionAreas?.join(', ') || projectBasics.soluti
 Investment: ${formatCurrency(projectBasics.investmentAmount)}
 Timeline: ${projectBasics.timelineMonths} months
 ${dealTypeSection}
+${outcomesSection}
 
 Financial Projections (Realistic Scenario):
 - ROI: ${formatPercent(realistic.roi)}
@@ -135,6 +149,7 @@ Success Metrics: ${recommendation.successMetrics.join('; ')}
     customer: `You are writing for an EXTERNAL CUSTOMER audience. 
 Focus on:
 - Business value and outcomes they will achieve
+- Use the customer-stated outcomes (benefits) as the primary storyline when provided
 - Competitive advantages and market positioning
 - Risk mitigation and confidence (use Monte Carlo probabilities if available)
 - Clear ROI and payback messaging
@@ -147,6 +162,7 @@ Generate a compelling business case narrative that helps the customer justify th
 Focus on:
 - Deal qualification and prioritization rationale
 - Customer engagement strategy
+  - Anchor the narrative in the customer-stated outcomes and translate them into measurable success criteria
 - Resource requirements and timeline
 - Risk factors and mitigation strategies
 - Success metrics and tracking approach
@@ -158,6 +174,7 @@ Generate a practical planning document that helps the team execute this opportun
     executive: `You are writing for EXECUTIVE leadership (VP+, C-suite).
 Focus on:
 - Strategic value and market impact
+  - Tie strategic value to customer-stated outcomes (benefits) when provided
 - Portfolio-level contribution
 - Key financial metrics with confidence ranges
 - Decision recommendation (go/no-go/conditional)

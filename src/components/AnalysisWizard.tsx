@@ -41,6 +41,107 @@ interface AnalysisWizardProps {
 
 type Step = 1 | 2 | 3 | 4 | 5
 
+type CustomerOutcomeId =
+  | 'revenue-growth'
+  | 'cost-reduction'
+  | 'productivity'
+  | 'time-to-market'
+  | 'customer-experience'
+  | 'risk-compliance'
+  | 'data-modernization'
+  | 'security'
+
+const CUSTOMER_OUTCOMES: Array<{
+  id: CustomerOutcomeId
+  label: string
+  description: string
+  suggestedImpact: Partial<ImpactProjections>
+}> = [
+  {
+    id: 'revenue-growth',
+    label: 'Grow revenue / new channels',
+    description: 'Increase sales, conversion, cross-sell, or enable new digital offerings.',
+    suggestedImpact: { revenueGrowthRate: 15, timeToMarketImprovement: 5 },
+  },
+  {
+    id: 'cost-reduction',
+    label: 'Reduce operating costs',
+    description: 'Automation, platform consolidation, fewer manual processes, lower run costs.',
+    suggestedImpact: { costReduction: 20, efficiencyGain: 10 },
+  },
+  {
+    id: 'productivity',
+    label: 'Improve employee productivity',
+    description: 'Boost throughput and reduce time spent on repetitive work.',
+    suggestedImpact: { efficiencyGain: 20, costReduction: 10 },
+  },
+  {
+    id: 'time-to-market',
+    label: 'Accelerate time-to-market',
+    description: 'Deliver features/products faster with better dev + data + operations.',
+    suggestedImpact: { timeToMarketImprovement: 25 },
+  },
+  {
+    id: 'customer-experience',
+    label: 'Improve customer experience',
+    description: 'Better service, personalization, responsiveness, and reliability.',
+    suggestedImpact: { revenueGrowthRate: 10, efficiencyGain: 5 },
+  },
+  {
+    id: 'risk-compliance',
+    label: 'Reduce risk / improve compliance',
+    description: 'Lower audit findings, improve resilience, and reduce operational exposure.',
+    suggestedImpact: { costReduction: 5 },
+  },
+  {
+    id: 'data-modernization',
+    label: 'Modernize data & analytics',
+    description: 'Improve data quality, insights, forecasting, and decision speed.',
+    suggestedImpact: { efficiencyGain: 15, timeToMarketImprovement: 10 },
+  },
+  {
+    id: 'security',
+    label: 'Strengthen security posture',
+    description: 'Reduce breaches/incidents and improve detection + response.',
+    suggestedImpact: { costReduction: 5, efficiencyGain: 5 },
+  },
+]
+
+const clampPercent = (value: number) => Math.max(0, Math.min(100, value))
+const roundToStep = (value: number, step = 5) => Math.round(value / step) * step
+
+const computeSuggestedImpact = (
+  selected: string[] | undefined,
+  dealType: DealType
+): ImpactProjections => {
+  const defaults = DEAL_TYPE_INFO[dealType]?.defaultProjections
+  const base: ImpactProjections = {
+    revenueGrowthRate: defaults?.revenueGrowthRate ?? 10,
+    costReduction: defaults?.costReduction ?? 15,
+    efficiencyGain: defaults?.efficiencyGain ?? 20,
+    timeToMarketImprovement: defaults?.timeToMarketImprovement ?? 15,
+  }
+
+  const chosen = new Set((selected || []).map(String))
+  const combined = CUSTOMER_OUTCOMES.reduce<ImpactProjections>((acc, outcome) => {
+    if (!chosen.has(outcome.id)) return acc
+    return {
+      revenueGrowthRate: acc.revenueGrowthRate + (outcome.suggestedImpact.revenueGrowthRate ?? 0),
+      costReduction: acc.costReduction + (outcome.suggestedImpact.costReduction ?? 0),
+      efficiencyGain: acc.efficiencyGain + (outcome.suggestedImpact.efficiencyGain ?? 0),
+      timeToMarketImprovement:
+        acc.timeToMarketImprovement + (outcome.suggestedImpact.timeToMarketImprovement ?? 0),
+    }
+  }, base)
+
+  return {
+    revenueGrowthRate: roundToStep(clampPercent(combined.revenueGrowthRate)),
+    costReduction: roundToStep(clampPercent(combined.costReduction)),
+    efficiencyGain: roundToStep(clampPercent(combined.efficiencyGain)),
+    timeToMarketImprovement: roundToStep(clampPercent(combined.timeToMarketImprovement)),
+  }
+}
+
 export function AnalysisWizard({ onComplete, onCancel, initialData }: AnalysisWizardProps) {
   const [currentStep, setCurrentStep] = useState<Step>(1)
   const [solutionAreaSuggestion, setSolutionAreaSuggestion] = useState<string>('')
@@ -60,6 +161,15 @@ export function AnalysisWizard({ onComplete, onCancel, initialData }: AnalysisWi
   const [dataSource, setDataSource] = useState<string | null>(null)
   const [metricExplanations, setMetricExplanations] = useState<Record<string, string>>({})
   const [hasBeenEdited, setHasBeenEdited] = useState<Record<string, boolean>>({})
+  const [projectionsEdited, setProjectionsEdited] = useState(false)
+
+  const dealTypeIcons: Record<DealType, React.ReactNode> = {
+    'new-business': <Handshake className="h-5 w-5" />,
+    'renewal': <ArrowsClockwise className="h-5 w-5" />,
+    'upsell-cross-sell': <TrendUp className="h-5 w-5" />,
+    'competitive': <Sword className="h-5 w-5" />,
+    'azure-macc': <CloudArrowUp className="h-5 w-5" />,
+  }
 
   const [projectBasics, setProjectBasics] = useState<ProjectBasics>({
     name: initialData?.projectBasics?.name ?? '',
@@ -71,6 +181,8 @@ export function AnalysisWizard({ onComplete, onCancel, initialData }: AnalysisWi
     dealType: initialData?.projectBasics?.dealType ?? 'new-business',
     solutionArea: initialData?.projectBasics?.solutionArea ?? 'Other',
     solutionAreas: initialData?.projectBasics?.solutionAreas ?? [],
+    customerOutcomes: initialData?.projectBasics?.customerOutcomes ?? [],
+    customerOutcomesNotes: initialData?.projectBasics?.customerOutcomesNotes ?? '',
     investmentAmount: initialData?.projectBasics?.investmentAmount ?? 100000,
     timelineMonths: initialData?.projectBasics?.timelineMonths ?? 12,
     maccCommitmentAmount: initialData?.projectBasics?.maccCommitmentAmount,
@@ -200,6 +312,7 @@ export function AnalysisWizard({ onComplete, onCancel, initialData }: AnalysisWi
         ...prev,
         ...dealInfo.defaultProjections,
       }))
+      setProjectionsEdited(false)
     }
     
     // Apply default strategic weights
@@ -209,6 +322,23 @@ export function AnalysisWizard({ onComplete, onCancel, initialData }: AnalysisWi
         ...dealInfo.defaultStrategicWeights,
       }))
     }
+  }
+
+  const toggleCustomerOutcome = (id: CustomerOutcomeId) => {
+    const current = projectBasics.customerOutcomes || []
+    const next = current.includes(id) ? current.filter(x => x !== id) : [...current, id]
+
+    setProjectBasics(prev => ({ ...prev, customerOutcomes: next }))
+
+    // If user hasn't manually edited projections, keep projections in sync with outcomes
+    if (!projectionsEdited) {
+      setImpactProjections(computeSuggestedImpact(next, projectBasics.dealType || 'new-business'))
+    }
+  }
+
+  const applySuggestedImpact = () => {
+    setImpactProjections(computeSuggestedImpact(projectBasics.customerOutcomes, projectBasics.dealType || 'new-business'))
+    setProjectionsEdited(false)
   }
 
   // Get deal type icon
@@ -1139,6 +1269,53 @@ Provide a brief 2-3 sentence suggestion about which solution area(s) this use ca
 
             <div className="space-y-6">
               <div className="space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <Label>Customer Outcomes (Benefits)</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Start with what the customer wants to achieve. You can auto-suggest projections from these outcomes.
+                    </p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={applySuggestedImpact}>
+                    Apply suggested projections
+                  </Button>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {CUSTOMER_OUTCOMES.map(o => (
+                    <label key={o.id} className="flex items-start gap-3 rounded-md border p-3 hover:bg-muted/40">
+                      <Checkbox
+                        checked={(projectBasics.customerOutcomes || []).includes(o.id)}
+                        onCheckedChange={() => toggleCustomerOutcome(o.id)}
+                      />
+                      <div className="min-w-0">
+                        <div className="font-medium leading-5">{o.label}</div>
+                        <div className="text-xs text-muted-foreground">{o.description}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Outcomes Notes (optional)</Label>
+                  <Textarea
+                    value={projectBasics.customerOutcomesNotes || ''}
+                    onChange={e =>
+                      setProjectBasics(prev => ({ ...prev, customerOutcomesNotes: e.target.value }))
+                    }
+                    placeholder="Add any customer-specific context (e.g., target segment, current pain points, constraints, preferred metrics, timeline pressure)."
+                    rows={3}
+                  />
+                </div>
+
+                {!projectionsEdited && (projectBasics.customerOutcomes || []).length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Projections are currently synced to selected outcomes. Move a slider to override.
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Revenue Growth Rate (%)</Label>
@@ -1150,9 +1327,10 @@ Provide a brief 2-3 sentence suggestion about which solution area(s) this use ca
                 </div>
                 <Slider
                   value={[impactProjections.revenueGrowthRate]}
-                  onValueChange={([value]) =>
+                  onValueChange={([value]) => {
+                    setProjectionsEdited(true)
                     setImpactProjections({ ...impactProjections, revenueGrowthRate: value })
-                  }
+                  }}
                   min={0}
                   max={100}
                   step={5}
@@ -1171,9 +1349,10 @@ Provide a brief 2-3 sentence suggestion about which solution area(s) this use ca
                 </div>
                 <Slider
                   value={[impactProjections.costReduction]}
-                  onValueChange={([value]) =>
+                  onValueChange={([value]) => {
+                    setProjectionsEdited(true)
                     setImpactProjections({ ...impactProjections, costReduction: value })
-                  }
+                  }}
                   min={0}
                   max={100}
                   step={5}
@@ -1192,9 +1371,10 @@ Provide a brief 2-3 sentence suggestion about which solution area(s) this use ca
                 </div>
                 <Slider
                   value={[impactProjections.efficiencyGain]}
-                  onValueChange={([value]) =>
+                  onValueChange={([value]) => {
+                    setProjectionsEdited(true)
                     setImpactProjections({ ...impactProjections, efficiencyGain: value })
-                  }
+                  }}
                   min={0}
                   max={100}
                   step={5}
@@ -1213,9 +1393,10 @@ Provide a brief 2-3 sentence suggestion about which solution area(s) this use ca
                 </div>
                 <Slider
                   value={[impactProjections.timeToMarketImprovement]}
-                  onValueChange={([value]) =>
+                  onValueChange={([value]) => {
+                    setProjectionsEdited(true)
                     setImpactProjections({ ...impactProjections, timeToMarketImprovement: value })
-                  }
+                  }}
                   min={0}
                   max={100}
                   step={5}

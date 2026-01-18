@@ -240,6 +240,10 @@ export interface ProjectBasics {
   dealType: DealType
   solutionArea: SolutionArea
   solutionAreas?: SolutionArea[]
+  /** Customer-stated outcomes/benefits they are targeting (used to guide projections and narrative) */
+  customerOutcomes?: string[]
+  /** Optional free-text context to help tailor customer-facing narratives */
+  customerOutcomesNotes?: string
   investmentAmount: number
   timelineMonths: number
   // MACC-specific fields
