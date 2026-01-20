@@ -6,7 +6,7 @@
 import type { Analysis, DealType } from './types'
 import { DEAL_TYPE_INFO } from './types'
 import type { MonteCarloResults } from './monte-carlo'
-import type { GeneratedNarrative } from './ai-narratives'
+import type { GeneratedNarrative, NarrativeCache } from './ai-narratives'
 import { formatCurrency, formatPercent } from './calculations'
 import { formatCustomerOutcomes } from './customer-outcomes'
 
@@ -30,6 +30,345 @@ export interface GeneratedReport {
   audience: ReportAudience
   dealType: DealType
   generatedAt: number
+}
+
+export type ReportSectionId =
+  | 'overview'
+  | 'financial'
+  | 'risk'
+  | 'strategic'
+  | 'market'
+  | 'customer-view'
+  | 'internal-view'
+
+export interface MultiSectionReportOptions {
+  sections: ReportSectionId[]
+  narratives?: NarrativeCache
+}
+
+const SECTION_TITLES: Record<ReportSectionId, string> = {
+  overview: 'Overview',
+  financial: 'Financial',
+  risk: 'Risk Analysis',
+  strategic: 'Strategic',
+  market: 'Market Context',
+  'customer-view': 'Customer View',
+  'internal-view': 'Internal View',
+}
+
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function renderList(items: string[]): string {
+  if (items.length === 0) return '<p><em>None</em></p>'
+  return `<ul>${items.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul>`
+}
+
+function renderSection(title: string, innerHtml: string, pageBreakBefore = false): string {
+  return `
+  <section class="section ${pageBreakBefore ? 'page-break' : ''}">
+    <h2>${escapeHtml(title)}</h2>
+    ${innerHtml}
+  </section>
+  `.trim()
+}
+
+/**
+ * Generate a multi-section HTML report based on selected tabs/sections.
+ * This is intended for browser Print -> Save as PDF.
+ */
+export function generateMultiSectionReport(
+  analysis: Analysis,
+  options: MultiSectionReportOptions,
+  monteCarloResults?: MonteCarloResults
+): GeneratedReport {
+  const { projectBasics, results, recommendation, strategicFactors } = analysis
+  const dealType = projectBasics.dealType || 'new-business'
+  const dealInfo = DEAL_TYPE_INFO[dealType]
+
+  const sections = (options.sections || []).filter((s): s is ReportSectionId => Boolean(s))
+  const uniqueSections = Array.from(new Set(sections))
+  const realistic = results.realistic
+
+  const customerOutcomes = formatCustomerOutcomes(projectBasics.customerOutcomes)
+  const outcomesNotes = (projectBasics.customerOutcomesNotes || '').trim()
+
+  const narrCustomer = options.narratives?.customer
+  const narrInternal = options.narratives?.internal
+
+  const toc = `
+    <div class="toc">
+      <h2>Included Sections</h2>
+      <ul>
+        ${uniqueSections.map(id => `<li>${escapeHtml(SECTION_TITLES[id])}</li>`).join('')}
+      </ul>
+    </div>
+  `.trim()
+
+  const contentBlocks: string[] = []
+  contentBlocks.push(toc)
+
+  uniqueSections.forEach((sectionId, idx) => {
+    const pageBreak = idx > 0
+
+    if (sectionId === 'overview') {
+      contentBlocks.push(
+        renderSection(
+          SECTION_TITLES[sectionId],
+          `
+          <p><strong>Customer:</strong> ${escapeHtml(projectBasics.customerName)}</p>
+          <p><strong>Industry:</strong> ${escapeHtml(String(projectBasics.industry))}</p>
+          <p><strong>Deal Type:</strong> ${escapeHtml(dealInfo.name)}</p>
+
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-value">${formatCurrency(projectBasics.investmentAmount)}</div>
+              <div class="metric-label">Investment</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-value">${formatPercent(realistic.roi)}</div>
+              <div class="metric-label">Expected ROI</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-value">${formatCurrency(realistic.npv)}</div>
+              <div class="metric-label">Net Present Value</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-value">${realistic.paybackMonths.toFixed(1)} mo</div>
+              <div class="metric-label">Payback Period</div>
+            </div>
+          </div>
+
+          <div class="recommendation ${escapeHtml(recommendation.decision)}">
+            <h3 style="margin-top: 0;">Recommendation: ${escapeHtml(recommendation.decision.toUpperCase())}</h3>
+            <p>${escapeHtml(recommendation.reasoning)}</p>
+          </div>
+          `.trim(),
+          pageBreak
+        )
+      )
+      return
+    }
+
+    if (sectionId === 'financial') {
+      contentBlocks.push(
+        renderSection(
+          SECTION_TITLES[sectionId],
+          `
+          <h3>Scenario Comparison</h3>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th>Conservative</th>
+                <th>Realistic</th>
+                <th>Optimistic</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>ROI</td>
+                <td>${formatPercent(results.conservative.roi)}</td>
+                <td><strong>${formatPercent(results.realistic.roi)}</strong></td>
+                <td>${formatPercent(results.optimistic.roi)}</td>
+              </tr>
+              <tr>
+                <td>NPV</td>
+                <td>${formatCurrency(results.conservative.npv)}</td>
+                <td><strong>${formatCurrency(results.realistic.npv)}</strong></td>
+                <td>${formatCurrency(results.optimistic.npv)}</td>
+              </tr>
+              <tr>
+                <td>Payback</td>
+                <td>${results.conservative.paybackMonths.toFixed(1)} mo</td>
+                <td><strong>${results.realistic.paybackMonths.toFixed(1)} mo</strong></td>
+                <td>${results.optimistic.paybackMonths.toFixed(1)} mo</td>
+              </tr>
+              <tr>
+                <td>Net Benefit</td>
+                <td>${formatCurrency(results.conservative.netBenefit)}</td>
+                <td><strong>${formatCurrency(results.realistic.netBenefit)}</strong></td>
+                <td>${formatCurrency(results.optimistic.netBenefit)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Customer Outcomes</h3>
+          ${customerOutcomes.length > 0 ? renderList(customerOutcomes) : '<p><em>No specific outcomes were selected.</em></p>'}
+          ${outcomesNotes ? `<p><strong>Notes:</strong> ${escapeHtml(outcomesNotes)}</p>` : ''}
+          `.trim(),
+          pageBreak
+        )
+      )
+      return
+    }
+
+    if (sectionId === 'risk') {
+      const riskHtml = monteCarloResults
+        ? `
+          <p>Based on ${monteCarloResults.iterations.toLocaleString()} Monte Carlo simulations:</p>
+          <ul>
+            <li><strong>Probability of Positive ROI:</strong> ${monteCarloResults.probabilityOfPositiveROI.toFixed(0)}%</li>
+            <li><strong>Payback within timeline:</strong> ${monteCarloResults.probabilityOfPaybackWithinTimeline.toFixed(0)}%</li>
+            <li><strong>ROI (P10/P50/P90):</strong> ${monteCarloResults.roi.p10.toFixed(0)}% / ${monteCarloResults.roi.p50.toFixed(0)}% / ${monteCarloResults.roi.p90.toFixed(0)}%</li>
+          </ul>
+        `.trim()
+        : `<p><em>Monte Carlo results not available in this export. Run Risk Analysis in the app to generate simulations, then export again.</em></p>`
+
+      contentBlocks.push(renderSection(SECTION_TITLES[sectionId], riskHtml, pageBreak))
+      return
+    }
+
+    if (sectionId === 'strategic') {
+      contentBlocks.push(
+        renderSection(
+          SECTION_TITLES[sectionId],
+          `
+          <p>Strategic factors (1–5):</p>
+          <table class="table">
+            <tbody>
+              <tr><td>Competitive Differentiation</td><td>${strategicFactors.competitiveDifferentiation}/5</td></tr>
+              <tr><td>Innovation Enablement</td><td>${strategicFactors.innovationEnablement}/5</td></tr>
+              <tr><td>Customer Experience</td><td>${strategicFactors.customerExperience}/5</td></tr>
+              <tr><td>Risk Mitigation</td><td>${strategicFactors.riskMitigation}/5</td></tr>
+              <tr><td>Employee Productivity</td><td>${strategicFactors.employeeProductivity}/5</td></tr>
+              <tr><td>Regulatory Compliance</td><td>${strategicFactors.regulatoryCompliance}/5</td></tr>
+            </tbody>
+          </table>
+          `.trim(),
+          pageBreak
+        )
+      )
+      return
+    }
+
+    if (sectionId === 'market') {
+      contentBlocks.push(
+        renderSection(
+          SECTION_TITLES[sectionId],
+          `
+          <p><strong>Ticker:</strong> ${escapeHtml(analysis.ticker || 'N/A')}</p>
+          <p><em>Note:</em> Detailed market charts/data are not embedded in the PDF export yet. This section currently captures identifiers and context available in the analysis object.</p>
+          `.trim(),
+          pageBreak
+        )
+      )
+      return
+    }
+
+    if (sectionId === 'customer-view') {
+      const narrativeHtml = narrCustomer
+        ? `
+          <p><strong>${escapeHtml(narrCustomer.title)}</strong></p>
+          <p>${escapeHtml(narrCustomer.summary)}</p>
+          ${narrCustomer.valueProposition ? `<p><strong>Value Proposition:</strong> ${escapeHtml(narrCustomer.valueProposition)}</p>` : ''}
+          ${narrCustomer.keyBenefits?.length ? `<h3>Key Benefits</h3>${renderList(narrCustomer.keyBenefits)}` : ''}
+        `.trim()
+        : `<p><em>No customer narrative has been generated yet. Use “Generate AI Narrative” in Customer View, then export again.</em></p>`
+
+      contentBlocks.push(renderSection(SECTION_TITLES[sectionId], narrativeHtml, pageBreak))
+      return
+    }
+
+    if (sectionId === 'internal-view') {
+      const narrativeHtml = narrInternal
+        ? `
+          <p><strong>${escapeHtml(narrInternal.title)}</strong></p>
+          <p>${escapeHtml(narrInternal.summary)}</p>
+          ${narrInternal.keyBenefits?.length ? `<h3>Key Points</h3>${renderList(narrInternal.keyBenefits)}` : ''}
+        `.trim()
+        : `<p><em>No internal brief has been generated yet. Use “Generate Internal Brief” in Internal View, then export again.</em></p>`
+
+      contentBlocks.push(renderSection(SECTION_TITLES[sectionId], narrativeHtml, pageBreak))
+      return
+    }
+  })
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${escapeHtml(projectBasics.name)} - Multi-Section Report</title>
+  <style>
+    :root {
+      --primary: #107c10;
+      --success: #107c10;
+      --warning: #ffb900;
+      --danger: #d13438;
+      --text: #323130;
+      --muted: #605e5c;
+      --border: #edebe9;
+      --bg: #ffffff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.6;
+      padding: 40px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 2rem; margin-bottom: 0.25rem; color: var(--primary); }
+    h2 { font-size: 1.5rem; margin: 2rem 0 1rem; border-bottom: 2px solid var(--primary); padding-bottom: 0.5rem; }
+    h3 { font-size: 1.15rem; margin: 1.25rem 0 0.75rem; }
+    p { margin-bottom: 0.75rem; }
+    ul { margin: 0.75rem 0 0.75rem 1.25rem; }
+    li { margin-bottom: 0.35rem; }
+    .subtitle { color: var(--muted); font-size: 1.05rem; margin-bottom: 0.75rem; }
+    .deal-badge { display: inline-block; padding: 0.25rem 0.75rem; background: var(--primary); color: #fff; border-radius: 4px; font-size: 0.875rem; }
+    .section { margin: 1.5rem 0; }
+    .toc { border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 1rem 0; }
+    .metric-card { padding: 1rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; }
+    .metric-value { font-size: 1.65rem; font-weight: 700; color: var(--primary); }
+    .metric-label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .recommendation { padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid var(--primary); background: #f3fbf3; }
+    .recommendation.no-go { border-left-color: var(--danger); background: #fde7e9; }
+    .recommendation.conditional { border-left-color: var(--warning); background: #fff4ce; }
+    .table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; }
+    .table th, .table td { border: 1px solid var(--border); padding: 0.5rem; text-align: left; }
+    .table th { background: #f8f8f8; }
+    .footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.875rem; color: var(--muted); }
+    @media print {
+      body { padding: 20px; }
+      .page-break { page-break-before: always; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>${escapeHtml(projectBasics.name)}</h1>
+    <p class="subtitle">${escapeHtml(projectBasics.customerName)} | ${escapeHtml(String(projectBasics.industry))}</p>
+    <span class="deal-badge">${escapeHtml(dealInfo.name)}</span>
+  </header>
+
+  ${contentBlocks.join('\n')}
+
+  <footer class="footer">
+    <p>Generated on ${new Date().toLocaleDateString()} | ${escapeHtml(dealInfo.name)} | Multi-Section Report</p>
+  </footer>
+</body>
+</html>
+  `.trim()
+
+  return {
+    title: `${projectBasics.name} - Multi-Section Report`,
+    content: html,
+    format: 'html',
+    audience: 'internal',
+    dealType,
+    generatedAt: Date.now(),
+  }
 }
 
 const DEFAULT_OPTIONS: ReportOptions = {

@@ -29,6 +29,7 @@ import type { GeneratedNarrative } from '@/lib/ai-narratives'
 import { generateNarrative } from '@/lib/ai-narratives'
 import { formatCurrency, formatPercent } from '@/lib/calculations'
 import { runMonteCarloFromAnalysis, DEFAULT_MONTE_CARLO_CONFIG } from '@/lib/monte-carlo'
+import { cn } from '@/lib/utils'
 
 interface CustomerPresentationViewProps {
   analysis: Analysis
@@ -36,6 +37,7 @@ interface CustomerPresentationViewProps {
   narrative?: GeneratedNarrative
   onMonteCarloComplete?: (results: MonteCarloResults) => void
   onNarrativeGenerated?: (narrative: GeneratedNarrative) => void
+  onRequestExport?: () => void
 }
 
 export function CustomerPresentationView({
@@ -44,6 +46,7 @@ export function CustomerPresentationView({
   narrative,
   onMonteCarloComplete,
   onNarrativeGenerated,
+  onRequestExport,
 }: CustomerPresentationViewProps) {
   const [localMC, setLocalMC] = useState<MonteCarloResults | undefined>(monteCarloResults)
   const [localNarrative, setLocalNarrative] = useState<GeneratedNarrative | undefined>(narrative)
@@ -302,7 +305,7 @@ export function CustomerPresentationView({
                 )}
               </Button>
             )}
-            <Button variant="outline">
+            <Button variant="outline" onClick={onRequestExport}>
               <FileText className="mr-2 h-4 w-4" />
               Export to PDF
             </Button>
@@ -401,11 +404,24 @@ function ConfidenceBar({
   value: number
   color: string
 }) {
+  const colorClass =
+    color === 'chart-3'
+      ? 'text-chart-3'
+      : color === 'chart-1'
+        ? 'text-chart-1'
+        : color === 'chart-2'
+          ? 'text-chart-2'
+          : color === 'chart-4'
+            ? 'text-chart-4'
+            : color === 'chart-5'
+              ? 'text-chart-5'
+              : 'text-primary'
+
   return (
     <div>
       <div className="flex justify-between mb-1">
         <span className="text-sm text-muted-foreground">{label}</span>
-        <span className={`text-sm font-medium text-${color}`}>{value.toFixed(0)}%</span>
+        <span className={cn('text-sm font-medium', colorClass)}>{value.toFixed(0)}%</span>
       </div>
       <Progress value={value} className="h-2" />
     </div>

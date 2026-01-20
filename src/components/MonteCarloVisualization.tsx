@@ -310,10 +310,12 @@ function DistributionCard({
                 {chartData.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
+                    stroke="hsl(var(--chart-3))"
+                    strokeWidth={1}
                     fill={
                       entry.isMedianBucket
-                        ? 'hsl(var(--primary))'
-                        : 'hsl(var(--primary) / 0.5)'
+                        ? 'hsl(var(--chart-3))'
+                        : 'hsl(var(--chart-3) / 0.65)'
                     }
                   />
                 ))}

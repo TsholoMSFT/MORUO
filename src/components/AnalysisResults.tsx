@@ -1,4 +1,13 @@
 import { useState } from 'react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -20,6 +29,7 @@ import { detectCompanyType } from '@/lib/company-detection'
 import { generateMockEarningsInsights, calculateSentimentScore, extractTechThemes } from '@/lib/earnings-analysis'
 import type { MonteCarloResults } from '@/lib/monte-carlo'
 import type { GeneratedNarrative, NarrativeCache } from '@/lib/ai-narratives'
+import { generateMultiSectionReport, type ReportSectionId } from '@/lib/report-templates'
 import {
   CheckCircle,
   Warning,
@@ -64,6 +74,38 @@ export function AnalysisResults({ analysis, onBack, onSave, onEdit, isSaved }: A
   const [narratives, setNarratives] = useState<NarrativeCache | undefined>(
     analysis.narratives as NarrativeCache | undefined
   )
+
+  // Export dialog state
+  const [exportDialogOpen, setExportDialogOpen] = useState(false)
+  const sectionOptions: { id: ReportSectionId; label: string }[] = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'financial', label: 'Financial' },
+    { id: 'risk', label: 'Risk Analysis' },
+    { id: 'strategic', label: 'Strategic' },
+    { id: 'market', label: 'Market Context' },
+    { id: 'customer-view', label: 'Customer View' },
+    { id: 'internal-view', label: 'Internal View' },
+  ]
+  const [selectedSections, setSelectedSections] = useState<ReportSectionId[]>(sectionOptions.map(s => s.id))
+
+  function handleExport() {
+    // Compose and print the report
+    const report = generateMultiSectionReport(analysis, {
+      sections: selectedSections,
+      narratives,
+    }, monteCarloResults)
+    // Print as HTML (open in new window and trigger print)
+    const win = window.open('', '_blank')
+    if (win) {
+      win.document.write(report.content)
+      win.document.close()
+      setTimeout(() => {
+        win.focus()
+        win.print()
+      }, 300)
+    }
+    setExportDialogOpen(false)
+  }
   
   const { projectBasics, results, recommendation } = analysis
   const benchmark = industryBenchmarks[projectBasics.industry]
@@ -111,6 +153,48 @@ export function AnalysisResults({ analysis, onBack, onSave, onEdit, isSaved }: A
 
   return (
     <div className="space-y-6">
+      {/* Export Report Dialog */}
+      <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Export Report</DialogTitle>
+            <DialogDescription>
+              Select which sections to include in the PDF report. All are selected by default.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={e => {
+              e.preventDefault()
+              handleExport()
+            }}
+          >
+            <div className="space-y-2 mb-4">
+              {sectionOptions.map(opt => (
+                <label key={opt.id} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedSections.includes(opt.id)}
+                    onChange={ev => {
+                      setSelectedSections(prev =>
+                        ev.target.checked
+                          ? [...prev, opt.id]
+                          : prev.filter(id => id !== opt.id)
+                      )
+                    }}
+                  />
+                  <span>{opt.label}</span>
+                </label>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button type="submit">Export &amp; Print PDF</Button>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <h1 className="mb-2 font-heading text-3xl font-bold tracking-tight">
@@ -172,6 +256,11 @@ export function AnalysisResults({ analysis, onBack, onSave, onEdit, isSaved }: A
         </div>
       </Card>
 
+      <div className="flex justify-end mb-2">
+        <Button variant="default" onClick={() => setExportDialogOpen(true)}>
+          Export Report…
+        </Button>
+      </div>
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -740,6 +829,7 @@ export function AnalysisResults({ analysis, onBack, onSave, onEdit, isSaved }: A
             onNarrativeGenerated={(narrative) =>
               setNarratives((prev) => ({ ...prev, customer: narrative }))
             }
+            onRequestExport={() => setExportDialogOpen(true)}
           />
         </TabsContent>
 
@@ -752,6 +842,7 @@ export function AnalysisResults({ analysis, onBack, onSave, onEdit, isSaved }: A
             onNarrativeGenerated={(narrative) =>
               setNarratives((prev) => ({ ...prev, internal: narrative }))
             }
+            onRequestExport={() => setExportDialogOpen(true)}
           />
         </TabsContent>
       </Tabs>

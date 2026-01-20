@@ -1,10 +1,7 @@
-name: Deploy to GitHub Spark
+name: Deploy to GitHub Pages (manual)
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -35,7 +32,6 @@ jobs:
       run: npm test --if-present
 
     - name: Deploy to GitHub Pages
-      if: github.ref == 'refs/heads/main'
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}

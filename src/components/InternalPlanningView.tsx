@@ -53,6 +53,7 @@ interface InternalPlanningViewProps {
   narrative?: GeneratedNarrative
   onMonteCarloComplete?: (results: MonteCarloResults) => void
   onNarrativeGenerated?: (narrative: GeneratedNarrative) => void
+  onRequestExport?: () => void
 }
 
 export function InternalPlanningView({
@@ -61,6 +62,7 @@ export function InternalPlanningView({
   narrative,
   onMonteCarloComplete,
   onNarrativeGenerated,
+  onRequestExport,
 }: InternalPlanningViewProps) {
   const [localMC, setLocalMC] = useState<MonteCarloResults | undefined>(monteCarloResults)
   const [localNarrative, setLocalNarrative] = useState<GeneratedNarrative | undefined>(narrative)
@@ -178,7 +180,7 @@ export function InternalPlanningView({
               Generate Internal Brief
             </Button>
           )}
-          <Button variant="outline">
+          <Button variant="outline" onClick={onRequestExport}>
             <FileText className="mr-2 h-4 w-4" />
             Export
           </Button>
@@ -556,7 +558,7 @@ export function InternalPlanningView({
                 <div className="relative pt-4">
                   <div className="absolute left-0 top-4 w-full h-2 bg-muted rounded-full" />
                   <div
-                    className="absolute left-0 top-4 h-2 bg-primary rounded-full"
+                    className="absolute left-0 top-4 h-2 bg-chart-3 rounded-full"
                     style={{
                       width: `${Math.min((realistic.paybackMonths / projectBasics.timelineMonths) * 100, 100)}%`,
                     }}
