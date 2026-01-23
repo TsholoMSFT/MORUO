@@ -7,6 +7,8 @@ import { DEAL_TYPE_INFO } from '@/lib/types'
 import { formatCurrency, formatPercent } from '@/lib/calculations'
 import { industryBenchmarks } from '@/lib/benchmarks'
 import { Breadcrumb, type BreadcrumbItem } from './Breadcrumb'
+import { NewsFeedTable } from './NewsFeedTable'
+import { CompanySearch } from './CompanySearch'
 import { StockPerformanceCard } from './StockPerformanceCard'
 import { useMarketData } from '@/hooks/useStockData'
 import { getIndustryIndexInfo } from '@/lib/stock-api'
@@ -36,6 +38,7 @@ export function CustomerView({
   backLabel = 'Back to All Use Cases',
   breadcrumbItems 
 }: CustomerViewProps) {
+  const [selectedCompany, setSelectedCompany] = useState(customerName)
   // Get ticker and industry from first analysis (assuming same customer)
   const firstAnalysis = analyses[0]
   const ticker = firstAnalysis?.ticker
@@ -237,13 +240,19 @@ export function CustomerView({
         </Card>
       </div>
 
+      {/* Company Search and News Feed Table */}
+      <div className="space-y-4">
+        <h2 className="font-heading text-2xl font-bold">Latest News Feed</h2>
+        <CompanySearch onCompanySelected={setSelectedCompany} />
+        <NewsFeedTable customer={selectedCompany} />
+      </div>
+
       <div className="space-y-4">
         <h2 className="font-heading text-2xl font-bold">All Use Cases</h2>
         <div className="space-y-3">
           {sortedAnalyses.map((analysis) => {
             const benchmark = industryBenchmarks[analysis.projectBasics.industry]
             const realisticROI = analysis.results.realistic.roi
-
             return (
               <Card
                 key={analysis.id}
