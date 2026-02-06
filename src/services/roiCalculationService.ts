@@ -23,6 +23,31 @@
  *    - Healthcare: 0.88 (compliance requirements)
  *    - Manufacturing: 0.92 (tangible outcomes)
  *    - Retail: 0.87 (market volatility)
+ * 
+ * INPUT FIELD EXPLANATIONS:
+ * -------------------------
+ * INVESTMENT AMOUNT ($):
+ *   - Purpose: The total upfront cost to implement the solution
+ *   - Used in: 
+ *     • ROI calculation: ROI = (Total Benefits - Investment) / Investment × 100
+ *     • Payback period: Months until cumulative benefits exceed investment
+ *     • NPV calculation: Discounted cash flows minus initial investment
+ *   - Example: $100,000 implementation = break-even when benefits reach $100K
+ * 
+ * TIMELINE (Months):
+ *   - Purpose: Expected duration from project start to full deployment
+ *   - Used in:
+ *     • Benefit realization curve: Shorter timelines = faster value capture
+ *     • Payback calculation: Longer timelines delay when benefits begin
+ *     • Risk assessment: Longer projects carry higher execution risk
+ *   - Impact: 12-month project realizes ~65% of Year 1 benefits vs. 95% for 3-month
+ * 
+ * SOLUTION AREAS:
+ *   - Purpose: Categorizes the initiative for industry-specific benchmarks
+ *   - Used in:
+ *     • Benchmark selection: Each area has different typical ROI ranges
+ *     • Risk factors: Security projects have different risk profiles than AI
+ *     • Value drivers: AI solutions typically drive productivity, Security drives risk reduction
  */
 
 import { z } from 'zod';
