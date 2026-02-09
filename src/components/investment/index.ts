@@ -1,0 +1,1 @@
+export { InvestmentBreakdown } from './InvestmentBreakdown';

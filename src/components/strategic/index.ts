@@ -1,0 +1,1 @@
+export { StrategicFactorsPanel } from './StrategicFactorsPanel';
